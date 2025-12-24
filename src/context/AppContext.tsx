@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Plans, Task } from '../types';
+import * as storage from '../utils/storage';
 
+// Context Type - Uygulamanın global state'i
 interface AppContextType {
   plans: Plans;
   username: string | null;
@@ -9,14 +10,10 @@ interface AppContextType {
   savePlan: (date: string, tasks: Task[]) => Promise<void>;
   updateTask: (date: string, taskId: string, done: boolean) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
+  refreshPlans: () => Promise<void>; // Planları yeniden yükle
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-const STORAGE_KEYS = {
-  PLANS: '@daily_planner_plans',
-  USERNAME: '@daily_planner_username',
-};
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [plans, setPlans] = useState<Plans>({});
@@ -28,19 +25,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     loadData();
   }, []);
 
+  // Verileri storage'dan yükle
   const loadData = async () => {
     try {
       const [savedPlans, savedUsername] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.PLANS),
-        AsyncStorage.getItem(STORAGE_KEYS.USERNAME),
+        storage.getAllPlans(),
+        storage.getUserName(),
       ]);
 
-      if (savedPlans) {
-        setPlans(JSON.parse(savedPlans));
-      }
-      if (savedUsername) {
-        setUsernameState(savedUsername);
-      }
+      setPlans(savedPlans);
+      setUsernameState(savedUsername);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
     } finally {
@@ -48,12 +42,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Planları yeniden yükle (refresh için)
+  const refreshPlans = async () => {
+    try {
+      const savedPlans = await storage.getAllPlans();
+      setPlans(savedPlans);
+    } catch (error) {
+      console.error('Planlar yenilenirken hata:', error);
+    }
+  };
+
   // Bir günün planını kaydet
   const savePlan = async (date: string, tasks: Task[]) => {
     try {
-      const newPlans = { ...plans, [date]: tasks };
-      setPlans(newPlans);
-      await AsyncStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(newPlans));
+      await storage.savePlan(date, tasks);
+      // Local state'i de güncelle (UI anında güncellensin)
+      setPlans(prev => ({ ...prev, [date]: tasks }));
     } catch (error) {
       console.error('Plan kaydetme hatası:', error);
       throw error;
@@ -63,14 +67,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Bir görevi güncelle (done durumunu değiştir)
   const updateTask = async (date: string, taskId: string, done: boolean) => {
     try {
-      const dayTasks = plans[date] || [];
-      const updatedTasks = dayTasks.map(task =>
-        task.id === taskId ? { ...task, done } : task
-      );
-      
-      const newPlans = { ...plans, [date]: updatedTasks };
-      setPlans(newPlans);
-      await AsyncStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(newPlans));
+      await storage.updateTask(date, taskId, { done });
+      // Local state'i güncelle
+      await refreshPlans();
     } catch (error) {
       console.error('Görev güncelleme hatası:', error);
       throw error;
@@ -78,10 +77,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Kullanıcı adını kaydet
+  // Kullanıcı adını kaydet
   const setUsername = async (name: string) => {
     try {
+      await storage.saveUserName(name);
       setUsernameState(name);
-      await AsyncStorage.setItem(STORAGE_KEYS.USERNAME, name);
     } catch (error) {
       console.error('Kullanıcı adı kaydetme hatası:', error);
       throw error;
@@ -97,6 +97,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         savePlan,
         updateTask,
         setUsername,
+        refreshPlans,
       }}
     >
       {children}
