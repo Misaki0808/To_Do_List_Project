@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plan } from '../types';
+import { Plans, Task } from '../types';
 
 // Storage anahtarları - tek yerden yönetmek için
 const STORAGE_KEYS = {
@@ -10,9 +10,9 @@ const STORAGE_KEYS = {
 /**
  * TÜM PLANLARI GETİR
  * AsyncStorage'dan tüm planları okur
- * @returns Promise<Plan> - Tarih bazlı planlar objesi
+ * @returns Promise<Plans> - Tarih bazlı planlar objesi
  */
-export const getAllPlans = async (): Promise<Plan> => {
+export const getAllPlans = async (): Promise<Plans> => {
   try {
     const plansJson = await AsyncStorage.getItem(STORAGE_KEYS.PLANS);
     if (plansJson === null) {
@@ -46,7 +46,7 @@ export const getPlanByDate = async (date: string) => {
  * @param date - Format: "YYYY-MM-DD"
  * @param tasks - Görev listesi
  */
-export const savePlan = async (date: string, tasks: any[]) => {
+export const savePlan = async (date: string, tasks: Task[]) => {
   try {
     const allPlans = await getAllPlans();
     allPlans[date] = tasks; // Yeni veya güncel planı ekle
@@ -81,10 +81,10 @@ export const deletePlan = async (date: string) => {
  * @param taskId - Görevin ID'si
  * @param updates - Güncellenecek alanlar (örn: { done: true })
  */
-export const updateTask = async (date: string, taskId: string, updates: any) => {
+export const updateTask = async (date: string, taskId: string, updates: Partial<Task>) => {
   try {
     const tasks = await getPlanByDate(date);
-    const updatedTasks = tasks.map(task =>
+    const updatedTasks = tasks.map((task: Task) =>
       task.id === taskId ? { ...task, ...updates } : task
     );
     await savePlan(date, updatedTasks);
