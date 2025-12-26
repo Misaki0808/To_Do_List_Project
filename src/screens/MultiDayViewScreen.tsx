@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { formatDateDisplay, getToday, addDays } from '../utils/dateUtils';
 import { Task } from '../types';
@@ -49,216 +49,293 @@ export default function MultiDayViewScreen() {
   const allCompleted = totalCount > 0 && completedCount === totalCount;
 
   return (
-    <View style={styles.container}>
-      {/* Tarih Navigasyonu */}
-      <View style={styles.dateNavigation}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => changeDate(-1)}
-        >
-          <Text style={styles.navButtonText}>← Önceki Gün</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.currentDateContainer}>
-          <Text style={styles.currentDate}>{formatDateDisplay(selectedDate)}</Text>
-          {selectedDate === getToday() && (
-            <Text style={styles.todayBadge}>BUGÜN</Text>
-          )}
-        </View>
-        
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => changeDate(1)}
-        >
-          <Text style={styles.navButtonText}>Sonraki Gün →</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* İstatistik */}
-      {totalCount > 0 && (
-        <View style={[styles.statsContainer, allCompleted && styles.statsCompleted]}>
-          <Text style={styles.statsText}>
-            {completedCount} / {totalCount} görev tamamlandı
-          </Text>
-          {allCompleted && <Text style={styles.celebrationText}>🎉 Tebrikler!</Text>}
-        </View>
-      )}
-
-      {/* Görev Listesi */}
-      <ScrollView style={styles.taskList}>
-        {currentTasks.length === 0 ? (
-          // Boş State
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>📭</Text>
-            <Text style={styles.emptyStateTitle}>Bu gün için plan yok</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              "Plan Oluştur" sekmesinden yeni plan ekleyebilirsiniz
-            </Text>
-          </View>
-        ) : (
-          // Görevler
-          currentTasks.map((task, index) => (
-            <TouchableOpacity
-              key={task.id}
-              style={styles.taskItem}
-              onPress={() => toggleTaskDone(task.id, task.done)}
-              activeOpacity={0.7}
-            >
-              {/* Checkbox */}
-              <View style={[styles.checkbox, task.done && styles.checkboxChecked]}>
-                {task.done && <Text style={styles.checkmark}>✓</Text>}
+    <LinearGradient
+      colors={['#4facfe', '#00f2fe', '#43e97b']}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <View style={styles.container}>
+        {/* Tarih Navigasyonu */}
+        <View style={styles.dateNavigation}>
+          <View style={styles.glassCard}>
+            <View style={styles.navigationContent}>
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => changeDate(-1)}
+              >
+                <Text style={styles.navButtonText}>←</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.currentDateContainer}>
+                <Text style={styles.currentDate}>{formatDateDisplay(selectedDate)}</Text>
+                {selectedDate === getToday() && (
+                  <View style={styles.todayBadge}>
+                    <Text style={styles.todayBadgeText}>BUGÜN</Text>
+                  </View>
+                )}
               </View>
               
-              {/* Görev Numarası ve Başlığı */}
-              <View style={styles.taskContent}>
-                <Text style={styles.taskNumber}>{index + 1}.</Text>
-                <Text style={[styles.taskTitle, task.done && styles.taskTitleDone]}>
-                  {task.title}
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => changeDate(1)}
+              >
+                <Text style={styles.navButtonText}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* İstatistik */}
+        {totalCount > 0 && (
+          <View style={styles.statsSection}>
+            <View style={styles.glassCard}>
+              <LinearGradient
+                colors={allCompleted ? ['#4facfe', '#00f2fe'] : ['#f093fb', '#f5576c']}
+                style={styles.statsGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <View style={styles.statsContent}>
+                  <Text style={styles.statsText}>
+                    {completedCount} / {totalCount} görev tamamlandı
+                  </Text>
+                  {allCompleted && <Text style={styles.celebrationText}>🎉</Text>}
+                </View>
+              </LinearGradient>
+            </View>
+          </View>
+        )}
+
+        {/* Görev Listesi */}
+        <ScrollView style={styles.taskList}>
+          {currentTasks.length === 0 ? (
+            // Boş State
+            <View style={styles.emptyState}>
+              <View style={styles.emptyStateCard}>
+                <Text style={styles.emptyStateIcon}>📭</Text>
+                <Text style={styles.emptyStateTitle}>Bu gün için plan yok</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  "Plan Oluştur" sekmesinden yeni plan ekleyebilirsiniz
                 </Text>
               </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-    </View>
+            </View>
+          ) : (
+            // Görevler
+            currentTasks.map((task, index) => (
+              <View key={task.id} style={styles.taskItemWrapper}>
+                <View style={styles.glassCard}>
+                  <TouchableOpacity
+                    style={styles.taskItem}
+                    onPress={() => toggleTaskDone(task.id, task.done)}
+                    activeOpacity={0.7}
+                  >
+                    {/* Checkbox */}
+                    <View style={[styles.checkbox, task.done && styles.checkboxChecked]}>
+                      {task.done && (
+                        <LinearGradient
+                          colors={['#4facfe', '#00f2fe']}
+                          style={styles.checkboxGradient}
+                        >
+                          <Text style={styles.checkmark}>✓</Text>
+                        </LinearGradient>
+                      )}
+                    </View>
+                    
+                    {/* Görev Numarası ve Başlığı */}
+                    <View style={styles.taskContent}>
+                      <View style={styles.taskNumberBadge}>
+                        <Text style={styles.taskNumber}>{index + 1}</Text>
+                      </View>
+                      <Text style={[styles.taskTitle, task.done && styles.taskTitleDone]}>
+                        {task.title}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
   },
   dateNavigation: {
+    padding: 16,
+  },
+  navigationContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
   },
   navButton: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   navButtonText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: '700',
   },
   currentDateContainer: {
     alignItems: 'center',
+    flex: 1,
   },
   currentDate: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-  },
-  todayBadge: {
-    fontSize: 10,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    backgroundColor: '#34C759',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: 4,
+    marginBottom: 4,
   },
-  statsContainer: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    margin: 16,
+  todayBadge: {
+    backgroundColor: 'rgba(67, 233, 123, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 12,
+  },
+  todayBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  statsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  statsGradient: {
+    padding: 16,
+    borderRadius: 20,
+  },
+  statsContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  statsCompleted: {
-    backgroundColor: '#34C759',
-  },
   statsText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#fff',
   },
   celebrationText: {
-    fontSize: 18,
+    fontSize: 24,
   },
   taskList: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 80,
   },
+  emptyStateCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
   emptyStateIcon: {
-    fontSize: 64,
+    fontSize: 72,
     marginBottom: 16,
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#8E8E93',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    paddingHorizontal: 40,
+    lineHeight: 22,
+  },
+  taskItemWrapper: {
+    marginBottom: 12,
   },
   taskItem: {
-    backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
   checkboxChecked: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    borderColor: 'transparent',
+  },
+  checkboxGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checkmark: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
   taskContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  taskNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(79, 172, 254, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   taskNumber: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginRight: 8,
+    fontWeight: '700',
+    color: '#fff',
   },
   taskTitle: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#fff',
+    fontWeight: '500',
   },
   taskTitleDone: {
     textDecorationLine: 'line-through',
-    color: '#8E8E93',
+    opacity: 0.6,
   },
 });
+

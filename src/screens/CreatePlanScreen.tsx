@@ -9,7 +9,9 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { formatDateDisplay, getToday, getTomorrow } from '../utils/dateUtils';
 import { Task } from '../types';
@@ -129,290 +131,372 @@ export default function CreatePlanScreen() {
   };
   
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {/* Tarih Seçici */}
-        <View style={styles.dateSection}>
-          <Text style={styles.label}>Tarih:</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={toggleDate}>
-            <Text style={styles.dateText}>{formatDateDisplay(selectedDate)}</Text>
-            <Text style={styles.changeDateText}>Değiştir</Text>
+    <LinearGradient
+      colors={['#667eea', '#764ba2', '#f093fb']}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <ScrollView style={styles.container}>
+        <View style={styles.content}>
+          {/* Tarih Seçici */}
+          <View style={styles.dateSection}>
+            <Text style={styles.label}>📅 Tarih Seçin</Text>
+            <TouchableOpacity style={styles.dateButton} onPress={toggleDate}>
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                style={styles.dateGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.dateText}>{formatDateDisplay(selectedDate)}</Text>
+                <View style={styles.changeDateBadge}>
+                  <Text style={styles.changeDateText}>Değiştir</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+          
+          {/* AI Bölümü Toggle */}
+          <TouchableOpacity
+            style={styles.aiToggleButton}
+            onPress={() => setShowAiSection(!showAiSection)}
+          >
+            <LinearGradient
+              colors={['#f093fb', '#f5576c']}
+              style={styles.aiToggleGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.aiToggleText}>
+                {showAiSection ? '❌ AI Bölümünü Kapat' : '🤖 AI ile Görev Oluştur'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* AI Paragraf Input */}
+          {showAiSection && (
+            <View style={styles.aiSection}>
+              <Text style={styles.label}>✨ Planınızı Yazın</Text>
+              <View style={styles.glassCard}>
+                <TextInput
+                  style={styles.paragraphInput}
+                  placeholder="Örn: Sabah 7'de kalkıp kahvaltı yapacağım..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                  value={paragraphInput}
+                  onChangeText={setParagraphInput}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.aiButton, isAiLoading && styles.aiButtonDisabled]}
+                onPress={handleAiGenerate}
+                disabled={isAiLoading}
+              >
+                <LinearGradient
+                  colors={isAiLoading ? ['#999', '#666'] : ['#f093fb', '#f5576c']}
+                  style={styles.aiButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isAiLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.aiButtonText}>✨ AI ile Görev Oluştur</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Manuel Görev Ekleme */}
+          <View style={styles.inputSection}>
+            <Text style={styles.label}>✏️ Manuel Görev Ekle</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.glassCard}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Örn: Alışverişe git"
+                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                  value={taskInput}
+                  onChangeText={setTaskInput}
+                  onSubmitEditing={handleAddTask}
+                  returnKeyType="done"
+                />
+              </View>
+              <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={styles.addButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.addButtonText}>+</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {/* Görev Listesi */}
+          {tasks.length > 0 && (
+            <View style={styles.taskListSection}>
+              <Text style={styles.label}>📝 Görevler ({tasks.length})</Text>
+              {tasks.map((task, index) => (
+                <View key={task.id} style={styles.taskItem}>
+                  <View style={styles.glassCard}>
+                    <View style={styles.taskContent}>
+                      <View style={styles.taskNumberBadge}>
+                        <Text style={styles.taskNumber}>{index + 1}</Text>
+                      </View>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveTask(task.id)}
+                        style={styles.removeButton}
+                      >
+                        <Text style={styles.removeButtonText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          {/* Kaydet Butonu */}
+          <TouchableOpacity
+            style={[styles.saveButton, tasks.length === 0 && styles.saveButtonDisabled]}
+            onPress={handleSavePlan}
+            disabled={tasks.length === 0}
+          >
+            <LinearGradient
+              colors={tasks.length === 0 ? ['#ccc', '#999'] : ['#4facfe', '#00f2fe']}
+              style={styles.saveButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.saveButtonText}>💾 Planı Kaydet</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-        
-        {/* AI Bölümü Toggle */}
-        <TouchableOpacity
-          style={styles.aiToggleButton}
-          onPress={() => setShowAiSection(!showAiSection)}
-        >
-          <Text style={styles.aiToggleText}>
-            {showAiSection ? '❌ AI Bölümünü Kapat' : '🤖 AI ile Görev Oluştur'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* AI Paragraf Input */}
-        {showAiSection && (
-          <View style={styles.aiSection}>
-            <Text style={styles.label}>Planınızı yazın:</Text>
-            <TextInput
-              style={styles.paragraphInput}
-              placeholder="Örn: Sabah 7'de kalkıp kahvaltı yapacağım, sonra spor salonuna gidip 1 saat egzersiz yapacağım..."
-              value={paragraphInput}
-              onChangeText={setParagraphInput}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-            <TouchableOpacity
-              style={[styles.aiButton, isAiLoading && styles.aiButtonDisabled]}
-              onPress={handleAiGenerate}
-              disabled={isAiLoading}
-            >
-              {isAiLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.aiButtonText}>✨ AI ile Görev Oluştur</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        {/* Manuel Görev Ekleme */}
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>Manuel Görev Ekle:</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Örn: Alışverişe git"
-              value={taskInput}
-              onChangeText={setTaskInput}
-              onSubmitEditing={handleAddTask}
-              returnKeyType="done"
-            />
-            <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
-              <Text style={styles.addButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {/* Görev Listesi */}
-        {tasks.length > 0 && (
-          <View style={styles.taskListSection}>
-            <Text style={styles.label}>Görevler ({tasks.length}):</Text>
-            {tasks.map((task, index) => (
-              <View key={task.id} style={styles.taskItem}>
-                <Text style={styles.taskNumber}>{index + 1}.</Text>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <TouchableOpacity
-                  onPress={() => handleRemoveTask(task.id)}
-                  style={styles.removeButton}
-                >
-                  <Text style={styles.removeButtonText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-        
-        {/* Kaydet Butonu */}
-        <TouchableOpacity
-          style={[styles.saveButton, tasks.length === 0 && styles.saveButtonDisabled]}
-          onPress={handleSavePlan}
-          disabled={tasks.length === 0}
-        >
-          <Text style={styles.saveButtonText}>💾 Planı Kaydet</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   dateSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  dateButton: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  changeDateText: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  inputSection: {
-    marginBottom: 24,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addButton: {
-    backgroundColor: '#007AFF',
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addButtonText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  taskListSection: {
-    marginBottom: 24,
-  },
-  taskItem: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  taskNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginRight: 12,
-  },
-  taskTitle: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  removeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#34C759',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-    opacity: 0.6,
-  },
-  saveButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  dateButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dateGradient: {
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  changeDateBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  changeDateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   aiToggleButton: {
-    backgroundColor: '#FF9500',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  aiToggleGradient: {
+    padding: 18,
+    alignItems: 'center',
   },
   aiToggleText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
   },
   aiSection: {
-    backgroundColor: '#FFF3E0',
+    marginBottom: 20,
+  },
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 20,
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#FF9500',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   paragraphInput: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
     fontSize: 16,
+    color: '#fff',
     minHeight: 100,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   aiButton: {
-    backgroundColor: '#FF9500',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  aiButtonGradient: {
+    padding: 18,
     alignItems: 'center',
   },
   aiButtonDisabled: {
     opacity: 0.6,
   },
   aiButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  inputSection: {
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  input: {
     fontSize: 16,
+    color: '#fff',
+    flex: 1,
+  },
+  addButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addButtonGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  taskListSection: {
+    marginBottom: 20,
+  },
+  taskItem: {
+    marginBottom: 12,
+  },
+  taskContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  taskNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  taskNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  taskTitle: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  removeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 87, 108, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  saveButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  saveButtonGradient: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
   },

@@ -5,6 +5,7 @@ import { Plans, Task } from '../types';
 const STORAGE_KEYS = {
   PLANS: '@daily_planner_plans',
   USER_NAME: '@daily_planner_user_name',
+  GENDER: '@daily_planner_gender',
 };
 
 /**
@@ -118,6 +119,32 @@ export const getUserName = async (): Promise<string | null> => {
   } catch (error) {
     console.error('Kullanıcı adı okunurken hata:', error);
     return null;
+  }
+};
+
+/**
+ * GENDER KAYDET
+ */
+export const saveGender = async (gender: 'male' | 'female') => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.GENDER, gender);
+    return true;
+  } catch (error) {
+    console.error('Gender kaydedilirken hata:', error);
+    return false;
+  }
+};
+
+/**
+ * GENDER GETİR
+ */
+export const getGender = async (): Promise<'male' | 'female'> => {
+  try {
+    const gender = await AsyncStorage.getItem(STORAGE_KEYS.GENDER);
+    return gender === 'female' ? 'female' : 'male'; // Default male
+  } catch (error) {
+    console.error('Gender okunurken hata:', error);
+    return 'male';
   }
 };
 

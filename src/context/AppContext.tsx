@@ -2,14 +2,19 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Plans, Task } from '../types';
 import * as storage from '../utils/storage';
 
+// Gender tipi
+export type Gender = 'male' | 'female';
+
 // Context Type - Uygulamanın global state'i
 interface AppContextType {
   plans: Plans;
   username: string | null;
+  gender: Gender;
   isLoading: boolean;
   savePlan: (date: string, tasks: Task[]) => Promise<void>;
   updateTask: (date: string, taskId: string, done: boolean) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
+  setGender: (gender: Gender) => Promise<void>;
   refreshPlans: () => Promise<void>; // Planları yeniden yükle
 }
 
@@ -18,6 +23,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [plans, setPlans] = useState<Plans>({});
   const [username, setUsernameState] = useState<string | null>(null);
+  const [gender, setGenderState] = useState<Gender>('male'); // Default erkek
   const [isLoading, setIsLoading] = useState(true);
 
   // İlk açılışta verileri yükle
@@ -28,13 +34,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Verileri storage'dan yükle
   const loadData = async () => {
     try {
-      const [savedPlans, savedUsername] = await Promise.all([
+      const [savedPlans, savedUsername, savedGender] = await Promise.all([
         storage.getAllPlans(),
         storage.getUserName(),
+        storage.getGender(),
       ]);
 
       setPlans(savedPlans);
       setUsernameState(savedUsername);
+      setGenderState(savedGender);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
     } finally {
@@ -77,7 +85,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Kullanıcı adını kaydet
-  // Kullanıcı adını kaydet
   const setUsername = async (name: string) => {
     try {
       await storage.saveUserName(name);
@@ -88,15 +95,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Gender'ı kaydet
+  const setGender = async (newGender: Gender) => {
+    try {
+      await storage.saveGender(newGender);
+      setGenderState(newGender);
+    } catch (error) {
+      console.error('Gender kaydetme hatası:', error);
+      throw error;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
         plans,
         username,
+        gender,
         isLoading,
         savePlan,
         updateTask,
         setUsername,
+        setGender,
         refreshPlans,
       }}
     >

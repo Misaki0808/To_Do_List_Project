@@ -1,15 +1,19 @@
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { AppProvider, useApp } from './src/context/AppContext';
+import 'react-native-gesture-handler';
 
 // Ekranlar
 import CreatePlanScreen from './src/screens/CreatePlanScreen';
 import MultiDayViewScreen from './src/screens/MultiDayViewScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
-const Tab = createBottomTabNavigator();
+// Custom Drawer
+import CustomDrawer from './src/components/CustomDrawer';
+
+const Drawer = createDrawerNavigator();
 
 // Ana uygulama içeriği
 function AppContent() {
@@ -26,52 +30,61 @@ function AppContent() {
 
   return (
     <NavigationContainer>
-      <Tab.Navigator
+      <Drawer.Navigator
+        drawerContent={(props) => <CustomDrawer {...props} />}
         screenOptions={{
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#8E8E93',
-          tabBarStyle: {
-            backgroundColor: '#fff',
-            borderTopWidth: 1,
-            borderTopColor: '#E5E5EA',
+          drawerStyle: {
+            backgroundColor: '#1a1a2e',
+            width: 280,
+          },
+          drawerActiveTintColor: '#fff',
+          drawerInactiveTintColor: 'rgba(255,255,255,0.6)',
+          drawerActiveBackgroundColor: 'rgba(102, 126, 234, 0.2)',
+          drawerItemStyle: {
+            borderRadius: 12,
+            marginVertical: 4,
+          },
+          drawerLabelStyle: {
+            fontSize: 16,
+            fontWeight: '600',
           },
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: '#667eea',
+            elevation: 0,
+            shadowOpacity: 0,
           },
           headerTintColor: '#fff',
           headerTitleStyle: {
             fontWeight: 'bold',
+            fontSize: 20,
           },
         }}
       >
-        <Tab.Screen
+        <Drawer.Screen
           name="CreatePlan"
           component={CreatePlanScreen}
           options={{
-            tabBarLabel: 'Plan Oluştur',
             title: '📝 Plan Oluştur',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>✏️</Text>,
+            drawerLabel: 'Plan Oluştur',
           }}
         />
-        <Tab.Screen
+        <Drawer.Screen
           name="MultiDayView"
           component={MultiDayViewScreen}
           options={{
-            tabBarLabel: 'Planlarım',
             title: '📅 Planlarım',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📅</Text>,
+            drawerLabel: 'Planlarım',
           }}
         />
-        <Tab.Screen
+        <Drawer.Screen
           name="Settings"
           component={SettingsScreen}
           options={{
-            tabBarLabel: 'Ayarlar',
             title: '⚙️ Ayarlar',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>⚙️</Text>,
+            drawerLabel: 'Ayarlar',
           }}
         />
-      </Tab.Navigator>
+      </Drawer.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>
   );
