@@ -14,7 +14,7 @@ import { Task } from '../types';
 import CopyPlanModal from '../components/CopyPlanModal';
 
 export default function MultiDayViewScreen() {
-  const { plans, updateTask, refreshPlans, savePlan } = useApp();
+  const { plans, updateTask, refreshPlans, savePlan, deletePlan } = useApp();
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [currentTasks, setCurrentTasks] = useState<Task[]>([]);
   const [isEditMode, setIsEditMode] = useState(false); // Düzenleme modu
@@ -98,8 +98,8 @@ export default function MultiDayViewScreen() {
 
   // Tüm günü sil
   const handleDeleteDay = async () => {
-    await savePlan(selectedDate, []);
-    await refreshPlans();
+    await deletePlan(selectedDate);
+    setCurrentTasks([]); // UI'ı anında güncelle
     setIsEditMode(false);
   };
 

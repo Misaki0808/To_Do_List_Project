@@ -12,6 +12,7 @@ interface AppContextType {
   gender: Gender;
   isLoading: boolean;
   savePlan: (date: string, tasks: Task[]) => Promise<void>;
+  deletePlan: (date: string) => Promise<void>;
   updateTask: (date: string, taskId: string, done: boolean) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
   setGender: (gender: Gender) => Promise<void>;
@@ -72,6 +73,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Bir günün planını sil
+  const deletePlan = async (date: string) => {
+    try {
+      await storage.deletePlan(date);
+      // Local state'i güncelle
+      setPlans(prev => {
+        const newPlans = { ...prev };
+        delete newPlans[date];
+        return newPlans;
+      });
+    } catch (error) {
+      console.error('Plan silme hatası:', error);
+      throw error;
+    }
+  };
+
   // Bir görevi güncelle (done durumunu değiştir)
   const updateTask = async (date: string, taskId: string, done: boolean) => {
     try {
@@ -114,6 +131,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         gender,
         isLoading,
         savePlan,
+        deletePlan,
         updateTask,
         setUsername,
         setGender,
