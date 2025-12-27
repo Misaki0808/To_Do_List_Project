@@ -8,6 +8,7 @@ import 'react-native-gesture-handler';
 // Ekranlar
 import CreatePlanScreen from './src/screens/CreatePlanScreen';
 import MultiDayViewScreen from './src/screens/MultiDayViewScreen';
+import PlanOverviewScreen from './src/screens/PlanOverviewScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
 // Custom Drawer
@@ -74,6 +75,14 @@ function AppContent() {
           options={{
             title: '📅 Planlarım',
             drawerLabel: 'Planlarım',
+          }}
+        />
+        <Drawer.Screen
+          name="PlanOverview"
+          component={PlanOverviewScreen}
+          options={{
+            title: '🔍 Genel Bakış',
+            drawerLabel: 'Genel Bakış',
           }}
         />
         <Drawer.Screen
