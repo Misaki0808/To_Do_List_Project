@@ -24,10 +24,10 @@ export default function CreatePlanScreen() {
   // State'ler
   const [selectedDate, setSelectedDate] = useState('');
   const [taskInput, setTaskInput] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [paragraphInput, setParagraphInput] = useState(''); // AI için paragraf
   const [isAiLoading, setIsAiLoading] = useState(false); // AI yükleniyor mu?
-  const [showAiSection, setShowAiSection] = useState(false); // AI bölümü göster/gizle
   const [showCalendar, setShowCalendar] = useState(false); // Takvim modal
   
   // İlk açılışta default tarihi belirle - boş gün bulana kadar ilerle
@@ -65,15 +65,31 @@ export default function CreatePlanScreen() {
       id: Date.now().toString(), // Basit ID üretimi
       title: taskInput.trim(),
       done: false,
+      priority: selectedPriority,
     };
     
     setTasks([...tasks, newTask]);
     setTaskInput(''); // Input'u temizle
+    setSelectedPriority('medium'); // Priority'yi resetle
   };
   
   // Görev sil
   const handleRemoveTask = (taskId: string) => {
     setTasks(tasks.filter(task => task.id !== taskId));
+  };
+
+  // Görev priority değiştir (döngüsel: low -> medium -> high -> low)
+  const handleChangePriority = (taskId: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        const nextPriority = 
+          task.priority === 'low' ? 'medium' :
+          task.priority === 'medium' ? 'high' :
+          'low';
+        return { ...task, priority: nextPriority };
+      }
+      return task;
+    }));
   };
   
   // Planı kaydet
@@ -180,25 +196,8 @@ export default function CreatePlanScreen() {
             </TouchableOpacity>
           </View>
           
-          {/* AI Bölümü Toggle */}
-          <TouchableOpacity
-            style={styles.aiToggleButton}
-            onPress={() => setShowAiSection(!showAiSection)}
-          >
-            <LinearGradient
-              colors={['#f093fb', '#f5576c']}
-              style={styles.aiToggleGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={styles.aiToggleText}>
-                {showAiSection ? '❌ AI Bölümünü Kapat' : '🤖 AI ile Görev Oluştur'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           {/* AI Paragraf Input */}
-          {showAiSection && (
+          {
             <View style={styles.aiSection}>
               <Text style={styles.label}>✨ Planınızı Yazın</Text>
               <View style={styles.glassCard}>
@@ -232,11 +231,46 @@ export default function CreatePlanScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          )}
+          }
           
           {/* Manuel Görev Ekleme */}
           <View style={styles.inputSection}>
             <Text style={styles.label}>✏️ Manuel Görev Ekle</Text>
+            
+            {/* Öncelik Seçici */}
+            <View style={styles.prioritySelector}>
+              <TouchableOpacity
+                style={[
+                  styles.priorityButton,
+                  selectedPriority === 'low' && styles.priorityButtonActive,
+                  { backgroundColor: selectedPriority === 'low' ? '#4CAF50' : 'rgba(76, 175, 80, 0.3)' }
+                ]}
+                onPress={() => setSelectedPriority('low')}
+              >
+                <Text style={styles.priorityText}>🟢 Düşük</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.priorityButton,
+                  selectedPriority === 'medium' && styles.priorityButtonActive,
+                  { backgroundColor: selectedPriority === 'medium' ? '#FFC107' : 'rgba(255, 193, 7, 0.3)' }
+                ]}
+                onPress={() => setSelectedPriority('medium')}
+              >
+                <Text style={styles.priorityText}>🟡 Orta</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.priorityButton,
+                  selectedPriority === 'high' && styles.priorityButtonActive,
+                  { backgroundColor: selectedPriority === 'high' ? '#F44336' : 'rgba(244, 67, 54, 0.3)' }
+                ]}
+                onPress={() => setSelectedPriority('high')}
+              >
+                <Text style={styles.priorityText}>🔴 Yüksek</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.inputRow}>
               <View style={styles.glassCard}>
                 <TextInput
@@ -266,24 +300,35 @@ export default function CreatePlanScreen() {
           {tasks.length > 0 && (
             <View style={styles.taskListSection}>
               <Text style={styles.label}>📝 Görevler ({tasks.length})</Text>
-              {tasks.map((task, index) => (
-                <View key={task.id} style={styles.taskItem}>
-                  <View style={styles.glassCard}>
-                    <View style={styles.taskContent}>
-                      <View style={styles.taskNumberBadge}>
-                        <Text style={styles.taskNumber}>{index + 1}</Text>
+              {tasks.map((task, index) => {
+                const priorityColor = 
+                  task.priority === 'high' ? '#F44336' :
+                  task.priority === 'medium' ? '#FFC107' :
+                  '#4CAF50';
+                
+                return (
+                  <View key={task.id} style={styles.taskItem}>
+                    <View style={[styles.glassCard, { borderLeftWidth: 4, borderLeftColor: priorityColor }]}>
+                      <View style={styles.taskContent}>
+                        <TouchableOpacity 
+                          style={[styles.taskNumberBadge, { backgroundColor: priorityColor }]}
+                          onPress={() => handleChangePriority(task.id)}
+                        >
+                          <Text style={styles.taskNumber}>{index + 1}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.taskTitle}>{task.title}</Text>
+                        
+                        <TouchableOpacity
+                          onPress={() => handleRemoveTask(task.id)}
+                          style={styles.removeButton}
+                        >
+                          <Text style={styles.removeButtonText}>✕</Text>
+                        </TouchableOpacity>
                       </View>
-                      <Text style={styles.taskTitle}>{task.title}</Text>
-                      <TouchableOpacity
-                        onPress={() => handleRemoveTask(task.id)}
-                        style={styles.removeButton}
-                      >
-                        <Text style={styles.removeButtonText}>✕</Text>
-                      </TouchableOpacity>
                     </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
           
@@ -434,6 +479,30 @@ const styles = StyleSheet.create({
   },
   inputSection: {
     marginBottom: 20,
+  },
+  prioritySelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  priorityButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  priorityButtonActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  priorityText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   inputRow: {
     flexDirection: 'row',

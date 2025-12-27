@@ -3,6 +3,7 @@ export interface Task {
   id: string;
   title: string;
   done: boolean;
+  priority?: 'low' | 'medium' | 'high'; // Yeşil, Sarı, Kırmızı
 }
 
 // Plan tipi - bir gün için plan

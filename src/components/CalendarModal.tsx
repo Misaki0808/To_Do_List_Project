@@ -99,7 +99,19 @@ const CalendarModal: React.FC<CalendarModalProps> = ({
   // Gün artır/azalt
   const changeDay = (increment: number) => {
     const newDay = selectedDay + increment;
-    if (newDay >= 1 && newDay <= maxDay) {
+    
+    if (increment > 0 && newDay > maxDay) {
+      // İleri basıldı ve max günü aştı -> Bir sonraki ayın 1. gününe geç
+      setSelectedDay(1);
+      changeMonth(1);
+    } else if (increment < 0 && newDay < 1) {
+      // Geri basıldı ve 1'in altına indi -> Önceki ayın son gününe geç
+      const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+      const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+      const prevMaxDay = getDaysInMonth(prevYear, prevMonth);
+      setSelectedDay(prevMaxDay);
+      changeMonth(-1);
+    } else if (newDay >= 1 && newDay <= maxDay) {
       setSelectedDay(newDay);
     }
   };
