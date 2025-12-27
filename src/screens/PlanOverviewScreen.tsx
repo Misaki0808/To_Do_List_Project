@@ -74,7 +74,7 @@ export default function PlanOverviewScreen() {
       end={{ x: 1, y: 1 }}
     >
       {/* Merkez (Seçili Gün) */}
-      <View style={styles.centerNodeContainer}>
+      <View style={styles.centerNodeContainer} pointerEvents="box-none">
         <View style={styles.centerNode}>
           <LinearGradient
             colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   centerNode: {
-    width: width * 0.55,
-    height: height * 0.35,
+    width: width * 0.5,
+    height: height * 0.32,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
   },
   surroundingNode: {
     position: 'absolute',
-    width: width * 0.42,
-    height: height * 0.22,
+    width: width * 0.4,
+    height: height * 0.2,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',

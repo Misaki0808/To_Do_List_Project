@@ -199,7 +199,7 @@ export default function CreatePlanScreen() {
           {
             <View style={styles.aiSection}>
               <Text style={styles.label}>✨ Planınızı Yazın</Text>
-              <View style={styles.glassCard}>
+              <View style={[styles.glassCard, { borderWidth: 0 }]}>
                 <TextInput
                   style={styles.paragraphInput}
                   placeholder="Örn: Sabah 7'de kalkıp kahvaltı yapacağım..."
@@ -209,6 +209,7 @@ export default function CreatePlanScreen() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
+                  underlineColorAndroid="transparent"
                 />
               </View>
               <TouchableOpacity
@@ -441,8 +442,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

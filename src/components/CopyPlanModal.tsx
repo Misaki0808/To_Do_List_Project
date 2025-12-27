@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,14 @@ export default function CopyPlanModal({
   const [selectedTasks, setSelectedTasks] = useState<string[]>(
     sourceTasks.map(task => task.id)
   );
+  
+  // Modal açıldığında veya kaynak görevler değiştiğinde tüm görevleri seçili yap
+  useEffect(() => {
+    if (visible) {
+      setSelectedTasks(sourceTasks.map(task => task.id));
+    }
+  }, [visible, sourceTasks]);
+
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
   const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
   const [targetDay, setTargetDay] = useState(new Date().getDate());
