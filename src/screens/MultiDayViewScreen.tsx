@@ -320,68 +320,87 @@ export default function MultiDayViewScreen() {
           {/* Buton Grubu */}
           {totalCount > 0 && (
             <View style={styles.buttonGroup}>
-              {/* Düzenleme Butonu */}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setIsEditMode(!isEditMode)}
-              >
-                <LinearGradient
-                  colors={isEditMode ? ['#f093fb', '#f5576c'] : ['#667eea', '#764ba2']}
-                  style={styles.actionButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.actionButtonText}>
-                    {isEditMode ? '✓ Bitti' : '⚙️ Düzenle'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Paylaşma Butonu */}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleSharePlan}
-              >
-                <LinearGradient
-                  colors={['#4facfe', '#00f2fe']}
-                  style={styles.actionButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.actionButtonText}>📤 Paylaş</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Kopyalama Butonu */}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setIsCopyModalVisible(true)}
-              >
-                <LinearGradient
-                  colors={['#f093fb', '#f5576c']}
-                  style={styles.actionButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.actionButtonText}>📋 Kopyala</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Günü Sil Butonu (Edit Mode'da) */}
-              {isEditMode && (
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={handleDeleteDay}
-                >
-                  <LinearGradient
-                    colors={['#ff6b6b', '#ee5a6f']}
-                    style={styles.deleteButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+              {!isEditMode ? (
+                // Normal mod - Düzenle, Paylaş, Kopyala
+                <>
+                  {/* Düzenleme Butonu */}
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setIsEditMode(true)}
                   >
-                    <Text style={styles.deleteButtonText}>✕</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionButtonText}>⚙️ Düzenle</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Paylaşma Butonu */}
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handleSharePlan}
+                  >
+                    <LinearGradient
+                      colors={['#4facfe', '#00f2fe']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionButtonText}>📤 Paylaş</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Kopyalama Butonu */}
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setIsCopyModalVisible(true)}
+                  >
+                    <LinearGradient
+                      colors={['#f093fb', '#f5576c']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionButtonText}>📋 Kopyala</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                // Edit mod - Sadece Bitti ve Sil
+                <>
+                  {/* Bitti Butonu */}
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setIsEditMode(false)}
+                  >
+                    <LinearGradient
+                      colors={['#f093fb', '#f5576c']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.actionButtonText}>✓ Bitti</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Günü Sil Butonu */}
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={handleDeleteDay}
+                  >
+                    <LinearGradient
+                      colors={['#ff6b6b', '#ee5a6f']}
+                      style={styles.deleteButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.deleteButtonText}>✕</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           )}
