@@ -6,19 +6,36 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
+  Linking,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { formatDateDisplay, getToday, addDays } from '../utils/dateUtils';
 import { Task } from '../types';
 import CopyPlanModal from '../components/CopyPlanModal';
+import ShareModal from '../components/ShareModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+
+// Sadece native platformlarda import et
+let RNShare: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    RNShare = require('react-native-share').default;
+  } catch (e) {
+    console.log('react-native-share not available');
+  }
+}
 
 export default function MultiDayViewScreen() {
-  const { plans, updateTask, refreshPlans, savePlan, deletePlan, settings } = useApp();
+  const { plans, updateTask, refreshPlans, savePlan, deletePlan, settings, theme } = useApp();
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [currentTasks, setCurrentTasks] = useState<Task[]>([]);
   const [isEditMode, setIsEditMode] = useState(false); // Düzenleme modu
   const [isCopyModalVisible, setIsCopyModalVisible] = useState(false); // Kopyalama modal
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false); // Paylaşım modal
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // Silme onay modal
 
   // Seçilen tarih değiştiğinde görevleri güncelle
   useEffect(() => {
@@ -100,18 +117,24 @@ export default function MultiDayViewScreen() {
   const handleDeleteDay = async () => {
     // Ayarlarda "daima sor" aktifse onay iste
     if (settings?.askBeforeDeleteAll) {
-      Alert.alert(
-        'Tüm Planları Sil',
-        `${formatDateDisplay(selectedDate)} tarihindeki tüm görevleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
-        [
-          { text: 'İptal', style: 'cancel' },
-          { 
-            text: 'Sil', 
-            style: 'destructive', 
-            onPress: confirmDelete
-          }
-        ]
-      );
+      if (Platform.OS === 'web') {
+        // Web'de custom modal kullan
+        setIsDeleteModalVisible(true);
+      } else {
+        // Mobilde Alert kullan
+        Alert.alert(
+          'Tüm Planları Sil',
+          `${formatDateDisplay(selectedDate)} tarihindeki tüm görevleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+          [
+            { text: 'İptal', style: 'cancel' },
+            { 
+              text: 'Sil', 
+              style: 'destructive', 
+              onPress: confirmDelete
+            }
+          ]
+        );
+      }
     } else {
       // Ayar kapalıysa direkt sil
       await confirmDelete();
@@ -148,9 +171,118 @@ export default function MultiDayViewScreen() {
     );
   };
 
+  // Planı paylaş (WhatsApp, Instagram, vb.)
+  const handleSharePlan = async () => {
+    console.log('📤 Paylaş butonuna tıklandı');
+    
+    if (currentTasks.length === 0) {
+      if (Platform.OS === 'web') {
+        window.alert('Paylaşılacak görev yok');
+      } else {
+        Alert.alert('Uyarı', 'Paylaşılacak görev yok');
+      }
+      return;
+    }
+
+    // Paylaşım metnini oluştur
+    let shareText = `📅 ${formatDateDisplay(selectedDate)}\n`;
+    shareText += `📝 Bugünkü Planım (${completedCount}/${totalCount} tamamlandı)\n\n`;
+    
+    currentTasks.forEach((task, index) => {
+      const emoji = task.done ? '✅' : '⬜';
+      const priorityEmoji = 
+        task.priority === 'high' ? '🔴' :
+        task.priority === 'medium' ? '🟡' :
+        '🟢';
+      shareText += `${emoji} ${priorityEmoji} ${index + 1}. ${task.title}\n`;
+    });
+    
+    shareText += `\n💪 ${percentage}% tamamlandı!\n`;
+    shareText += `\n#DailyPlanner #PlanımıPaylaşıyorum`;
+
+    console.log('📝 Paylaşım metni:', shareText);
+
+    try {
+      if (Platform.OS === 'web') {
+        console.log('🌐 Web - Modal gösteriliyor');
+        // Web'de modal göster
+        setIsShareModalVisible(true);
+      } else {
+        console.log('📱 Mobil - Share sheet açılıyor');
+        // Mobilde share sheet
+        if (RNShare) {
+          try {
+            await RNShare.open({
+              message: shareText,
+              social: RNShare.Social.WHATSAPP,
+              failOnCancel: false,
+            });
+          } catch (err: any) {
+            if (err.message !== 'User did not share') {
+              await Share.share({ message: shareText });
+            }
+          }
+        } else {
+          await Share.share({ message: shareText });
+        }
+      }
+    } catch (error) {
+      console.error('Paylaşım hatası:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Plan paylaşılırken hata oluştu');
+      } else {
+        Alert.alert('Hata', 'Plan paylaşılırken hata oluştu');
+      }
+    }
+  };
+
+  // Paylaşım metnini oluştur (modal için)
+  const getShareText = () => {
+    let shareText = `📅 ${formatDateDisplay(selectedDate)}\n`;
+    shareText += `📝 Bugünkü Planım (${completedCount}/${totalCount} tamamlandı)\n\n`;
+    
+    currentTasks.forEach((task, index) => {
+      const emoji = task.done ? '✅' : '⬜';
+      const priorityEmoji = 
+        task.priority === 'high' ? '🔴' :
+        task.priority === 'medium' ? '🟡' :
+        '🟢';
+      shareText += `${emoji} ${priorityEmoji} ${index + 1}. ${task.title}\n`;
+    });
+    
+    shareText += `\n💪 ${percentage}% tamamlandı!\n`;
+    shareText += `\n#DailyPlanner #PlanımıPaylaşıyorum`;
+
+    return shareText;
+  };
+
+  // WhatsApp'a paylaş
+  const shareViaWhatsApp = () => {
+    const shareText = getShareText();
+    const encodedText = encodeURIComponent(shareText);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // Metni kopyala
+  const copyToClipboard = async () => {
+    const shareText = getShareText();
+    
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareText);
+        window.alert('✅ Plan metni kopyalandı!');
+      } else {
+        window.alert('❌ Kopyalama desteklenmiyor');
+      }
+    } catch (error) {
+      window.alert('❌ Kopyalama başarısız');
+    }
+  };
+
   return (
     <LinearGradient
-      colors={['#4facfe', '#00f2fe', '#43e97b']}
+      colors={settings.darkMode ? ['#2a2d5a', '#1a1a2e', '#0f0f1e'] : ['#4facfe', '#00f2fe', '#43e97b']}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -202,6 +334,21 @@ export default function MultiDayViewScreen() {
                   <Text style={styles.actionButtonText}>
                     {isEditMode ? '✓ Bitti' : '⚙️ Düzenle'}
                   </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Paylaşma Butonu */}
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleSharePlan}
+              >
+                <LinearGradient
+                  colors={['#4facfe', '#00f2fe']}
+                  style={styles.actionButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.actionButtonText}>📤 Paylaş</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -342,6 +489,23 @@ export default function MultiDayViewScreen() {
           sourceTasks={currentTasks}
           sourceDate={formatDateDisplay(selectedDate)}
           onCopy={handleCopyPlan}
+        />
+
+        {/* Paylaşma Modal */}
+        <ShareModal
+          visible={isShareModalVisible}
+          onClose={() => setIsShareModalVisible(false)}
+          onWhatsApp={shareViaWhatsApp}
+          onCopy={copyToClipboard}
+        />
+
+        {/* Silme Onay Modal */}
+        <ConfirmDeleteModal
+          visible={isDeleteModalVisible}
+          onClose={() => setIsDeleteModalVisible(false)}
+          onConfirm={confirmDelete}
+          title="Tüm Planları Sil"
+          message={`${formatDateDisplay(selectedDate)} tarihindeki tüm görevleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
         />
       </View>
     </LinearGradient>

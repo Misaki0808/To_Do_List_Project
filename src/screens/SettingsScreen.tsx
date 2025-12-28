@@ -11,11 +11,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
+import { scheduleDailyNotification, cancelAllNotifications, requestNotificationPermissions } from '../utils/notificationService';
 
 export default function SettingsScreen() {
-  const { username, setUsername, plans, gender, setGender, settings, updateSettings } = useApp();
+  const { username, setUsername, plans, gender, setGender, settings, updateSettings, theme } = useApp();
   const [nameInput, setNameInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [notificationHour, setNotificationHour] = useState('08');
+  const [notificationMinute, setNotificationMinute] = useState('00');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // İlk açılışta kullanıcı adı yoksa düzenleme modunu aç
   useEffect(() => {
@@ -25,6 +29,16 @@ export default function SettingsScreen() {
       setNameInput(username);
     }
   }, [username]);
+
+  // Bildirim saatini ayarlardan al - sadece ilk yüklemede
+  useEffect(() => {
+    if (!isInitialized && settings.notificationTime) {
+      const [hour, minute] = settings.notificationTime.split(':');
+      setNotificationHour(hour || '08');
+      setNotificationMinute(minute || '00');
+      setIsInitialized(true);
+    }
+  }, [settings.notificationTime, isInitialized]);
 
   // Kullanıcı adını kaydet
   const handleSaveName = async () => {
@@ -69,11 +83,66 @@ export default function SettingsScreen() {
     }
   };
 
+  // Bildirimleri aç/kapat
+  const handleToggleNotifications = async (enabled: boolean) => {
+    if (enabled) {
+      const hasPermission = await requestNotificationPermissions();
+      if (!hasPermission) {
+        Alert.alert('İzin Gerekli', 'Bildirimler için izin vermeniz gerekiyor.');
+        return;
+      }
+      
+      // Bildirimi planla
+      const hour = parseInt(notificationHour);
+      const minute = parseInt(notificationMinute);
+      await scheduleDailyNotification(hour, minute);
+      await updateSettings({ notificationsEnabled: true });
+      Alert.alert('Başarılı', `Günlük bildirim ${notificationHour}:${notificationMinute} için ayarlandı!`);
+    } else {
+      // Bildirimleri iptal et
+      await cancelAllNotifications();
+      await updateSettings({ notificationsEnabled: false });
+      Alert.alert('Bilgi', 'Bildirimler kapatıldı');
+    }
+  };
+
+  // Bildirim saatini kaydet
+  const handleSaveNotificationTime = async () => {
+    const hour = parseInt(notificationHour);
+    const minute = parseInt(notificationMinute);
+    
+    if (isNaN(hour) || hour < 0 || hour > 23) {
+      Alert.alert('Hata', 'Saat 0-23 arasında olmalı');
+      return;
+    }
+    
+    if (isNaN(minute) || minute < 0 || minute > 59) {
+      Alert.alert('Hata', 'Dakika 0-59 arasında olmalı');
+      return;
+    }
+    
+    const timeString = `${notificationHour.padStart(2, '0')}:${notificationMinute.padStart(2, '0')}`;
+    await updateSettings({ notificationTime: timeString });
+    
+    // Eğer bildirimler açıksa, yeni saate göre yeniden planla
+    if (settings.notificationsEnabled) {
+      await scheduleDailyNotification(hour, minute);
+      Alert.alert('Başarılı', `Bildirim saati ${timeString} olarak güncellendi!`);
+    } else {
+      Alert.alert('Başarılı', 'Bildirim saati kaydedildi. Bildirimleri açtığınızda bu saat kullanılacak.');
+    }
+  };
+
   const stats = calculateStats();
+
+  // Tema renklerini al
+  const gradientColors = settings.darkMode 
+    ? ['#2a2d5a', '#1a1a2e', '#0f0f1e'] as const
+    : ['#fa709a', '#fee140', '#30cfd0'] as const;
 
   return (
     <LinearGradient
-      colors={['#fa709a', '#fee140', '#30cfd0']}
+      colors={gradientColors}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -241,7 +310,87 @@ export default function SettingsScreen() {
           {/* Tercihler */}
           <View style={styles.preferencesSection}>
             <Text style={styles.sectionTitle}>⚙️ Tercihler</Text>
+            
+            {/* Dark Mode */}
             <View style={styles.glassCard}>
+              <View style={styles.preferenceItem}>
+                <View style={styles.preferenceTextContainer}>
+                  <Text style={styles.preferenceTitle}>🌙 Karanlık Tema</Text>
+                  <Text style={styles.preferenceDescription}>
+                    Gözlerinizi yormayan karanlık tema
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.darkMode}
+                  onValueChange={(value) => updateSettings({ darkMode: value })}
+                  trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(67, 233, 123, 0.7)' }}
+                  thumbColor={settings.darkMode ? '#43e97b' : '#f4f3f4'}
+                  ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+                />
+              </View>
+            </View>
+
+            {/* Bildirimler */}
+            <View style={[styles.glassCard, { marginTop: 12 }]}>
+              <View style={styles.preferenceItem}>
+                <View style={styles.preferenceTextContainer}>
+                  <Text style={styles.preferenceTitle}>🔔 Günlük Bildirimler</Text>
+                  <Text style={styles.preferenceDescription}>
+                    Her gün belirlediğiniz saatte bildirim alın
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.notificationsEnabled}
+                  onValueChange={handleToggleNotifications}
+                  trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(67, 233, 123, 0.7)' }}
+                  thumbColor={settings.notificationsEnabled ? '#43e97b' : '#f4f3f4'}
+                  ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+                />
+              </View>
+              
+              {/* Bildirim Saati */}
+              {settings.notificationsEnabled && (
+                <View style={styles.timePickerContainer}>
+                  <Text style={styles.timePickerLabel}>Bildirim Saati:</Text>
+                  <View style={styles.timeInputRow}>
+                    <View style={styles.timeInputWrapper}>
+                      <TextInput
+                        style={styles.timeInput}
+                        value={notificationHour}
+                        onChangeText={setNotificationHour}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        placeholder="08"
+                        placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                      />
+                      <Text style={styles.timeInputLabel}>Saat</Text>
+                    </View>
+                    <Text style={styles.timeSeparator}>:</Text>
+                    <View style={styles.timeInputWrapper}>
+                      <TextInput
+                        style={styles.timeInput}
+                        value={notificationMinute}
+                        onChangeText={setNotificationMinute}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        placeholder="00"
+                        placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                      />
+                      <Text style={styles.timeInputLabel}>Dakika</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.saveTimeButton}
+                      onPress={handleSaveNotificationTime}
+                    >
+                      <Text style={styles.saveTimeButtonText}>✓</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Diğer Tercihler */}
+            <View style={[styles.glassCard, { marginTop: 12 }]}>
               <View style={styles.preferenceItem}>
                 <View style={styles.preferenceTextContainer}>
                   <Text style={styles.preferenceTitle}>Tüm planları silerken daima sor</Text>
@@ -497,5 +646,61 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 18,
+  },
+  timePickerContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  timePickerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  timeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  timeInputWrapper: {
+    alignItems: 'center',
+  },
+  timeInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    width: 60,
+    height: 60,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  timeInputLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  timeSeparator: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  saveTimeButton: {
+    backgroundColor: 'rgba(67, 233, 123, 0.8)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  saveTimeButtonText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

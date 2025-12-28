@@ -19,7 +19,7 @@ import { convertParagraphToTasks, checkApiKey } from '../utils/aiService';
 import CalendarModal from '../components/CalendarModal';
 
 export default function CreatePlanScreen() {
-  const { plans, savePlan } = useApp();
+  const { plans, savePlan, settings } = useApp();
   
   // State'ler
   const [selectedDate, setSelectedDate] = useState('');
@@ -170,7 +170,7 @@ export default function CreatePlanScreen() {
   
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#f093fb']}
+      colors={settings.darkMode ? ['#2a2d5a', '#1a1a2e', '#0f0f1e'] : ['#667eea', '#764ba2', '#f093fb']}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}

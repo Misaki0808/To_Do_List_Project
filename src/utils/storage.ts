@@ -172,6 +172,9 @@ export const getSettings = async (): Promise<Settings> => {
       // Varsayılan ayarlar
       return {
         askBeforeDeleteAll: true, // Default: Sor
+        darkMode: false, // Default: Light mode
+        notificationsEnabled: true, // Default: Bildirimler açık
+        notificationTime: '08:00', // Default: Sabah 8
       };
     }
     return JSON.parse(settingsJson);
@@ -179,6 +182,9 @@ export const getSettings = async (): Promise<Settings> => {
     console.error('Ayarlar okunurken hata:', error);
     return {
       askBeforeDeleteAll: true,
+      darkMode: false,
+      notificationsEnabled: true,
+      notificationTime: '08:00',
     };
   }
 };

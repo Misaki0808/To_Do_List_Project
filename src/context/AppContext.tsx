@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Plans, Task, Settings } from '../types';
 import * as storage from '../utils/storage';
+import { getTheme, Theme } from '../utils/theme';
 
 // Gender tipi
 export type Gender = 'male' | 'female';
@@ -11,6 +12,7 @@ interface AppContextType {
   username: string | null;
   gender: Gender;
   settings: Settings;
+  theme: Theme;
   isLoading: boolean;
   savePlan: (date: string, tasks: Task[]) => Promise<void>;
   deletePlan: (date: string) => Promise<void>;
@@ -27,7 +29,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [plans, setPlans] = useState<Plans>({});
   const [username, setUsernameState] = useState<string | null>(null);
   const [gender, setGenderState] = useState<Gender>('male'); // Default erkek
-  const [settings, setSettingsState] = useState<Settings>({ askBeforeDeleteAll: true });
+  const [settings, setSettingsState] = useState<Settings>({ 
+    askBeforeDeleteAll: true,
+    darkMode: false,
+    notificationsEnabled: true,
+    notificationTime: '08:00',
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // İlk açılışta verileri yükle
@@ -140,6 +147,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Tema hesapla (settings'e göre)
+  const theme = getTheme(settings.darkMode);
+
   return (
     <AppContext.Provider
       value={{
@@ -147,6 +157,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         username,
         gender,
         settings,
+        theme,
         isLoading,
         savePlan,
         deletePlan,

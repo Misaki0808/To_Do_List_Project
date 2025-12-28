@@ -54,7 +54,7 @@ export default function PlanOverviewScreen() {
           <View key={task.id} style={styles.taskRow}>
             <View style={[
               styles.dot, 
-              { backgroundColor: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#feca57' : '#48dbfb' }
+              { backgroundColor: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#feca57' : '#4CAF50' }
             ]} />
             <Text style={styles.taskText} numberOfLines={1}>{task.title}</Text>
           </View>

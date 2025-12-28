@@ -20,6 +20,9 @@ export interface Plans {
 // Settings tipi
 export interface Settings {
   askBeforeDeleteAll: boolean; // Tüm planları silerken sor
+  darkMode: boolean; // Karanlık tema
+  notificationsEnabled: boolean; // Bildirimler aktif mi
+  notificationTime: string; // Bildirim saati (HH:MM formatında)
 }
 
 // Navigation için tip tanımları
