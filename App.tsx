@@ -1,9 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { ActivityIndicator, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { AppProvider, useApp } from './src/context/AppContext';
-import 'react-native-gesture-handler';
+import { DrawerProvider, useDrawer } from './src/context/DrawerContext';
+import JSDrawer from './src/components/JSDrawer';
+import Svg, { Line } from 'react-native-svg';
 
 // Ekranlar
 import CreatePlanScreen from './src/screens/CreatePlanScreen';
@@ -11,10 +13,23 @@ import MultiDayViewScreen from './src/screens/MultiDayViewScreen';
 import PlanOverviewScreen from './src/screens/PlanOverviewScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
-// Custom Drawer
-import CustomDrawer from './src/components/CustomDrawer';
+const Stack = createStackNavigator();
 
-const Drawer = createDrawerNavigator();
+// Header'daki Menü Butonu (Modern Icon)
+function MenuButton() {
+  const { openDrawer } = useDrawer();
+  return (
+    <TouchableOpacity onPress={openDrawer} style={{ paddingLeft: 15 }}>
+      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <Line x1="3" y1="6" x2="21" y2="6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+        <Line x1="3" y1="12" x2="21" y2="12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+        <Line x1="3" y1="18" x2="21" y2="18" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+      </Svg>
+    </TouchableOpacity>
+  );
+}
+
+import { navigationRef } from './src/utils/navigationRef';
 
 // Ana uygulama içeriği
 function AppContent() {
@@ -29,71 +44,45 @@ function AppContent() {
     );
   }
 
+  // Ortak Header ayarları
+  const screenOptions = {
+    headerStyle: {
+      backgroundColor: '#667eea',
+    },
+    headerTintColor: '#fff',
+    headerTitleStyle: {
+      fontWeight: 'bold',
+      fontSize: 20,
+    },
+    headerLeft: () => <MenuButton />, // Her ekranda menü butonu
+  };
+
   return (
-    <NavigationContainer>
-      <Drawer.Navigator
-        drawerContent={(props) => <CustomDrawer {...props} />}
-        screenOptions={{
-          drawerStyle: {
-            backgroundColor: '#1a1a2e',
-            width: 280,
-          },
-          drawerActiveTintColor: '#fff',
-          drawerInactiveTintColor: 'rgba(255,255,255,0.6)',
-          drawerActiveBackgroundColor: 'rgba(102, 126, 234, 0.2)',
-          drawerItemStyle: {
-            borderRadius: 12,
-            marginVertical: 4,
-          },
-          drawerLabelStyle: {
-            fontSize: 16,
-            fontWeight: '600',
-          },
-          headerStyle: {
-            backgroundColor: '#667eea',
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-            fontSize: 20,
-          },
-        }}
-      >
-        <Drawer.Screen
-          name="CreatePlan"
-          component={CreatePlanScreen}
-          options={{
-            title: '📝 Plan Oluştur',
-            drawerLabel: 'Plan Oluştur',
-          }}
-        />
-        <Drawer.Screen
-          name="MultiDayView"
-          component={MultiDayViewScreen}
-          options={{
-            title: '📅 Planlarım',
-            drawerLabel: 'Planlarım',
-          }}
-        />
-        <Drawer.Screen
-          name="PlanOverview"
-          component={PlanOverviewScreen}
-          options={{
-            title: '🔍 Genel Bakış',
-            drawerLabel: 'Genel Bakış',
-          }}
-        />
-        <Drawer.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            title: '⚙️ Ayarlar',
-            drawerLabel: 'Ayarlar',
-          }}
-        />
-      </Drawer.Navigator>
+    <NavigationContainer ref={navigationRef}>
+      <JSDrawer>
+        <Stack.Navigator screenOptions={screenOptions as any}>
+          <Stack.Screen
+            name="CreatePlan"
+            component={CreatePlanScreen}
+            options={{ title: '📝 Plan Oluştur' }}
+          />
+          <Stack.Screen
+            name="MultiDayView"
+            component={MultiDayViewScreen}
+            options={{ title: '📅 Planlarım' }}
+          />
+          <Stack.Screen
+            name="PlanOverview"
+            component={PlanOverviewScreen}
+            options={{ title: '🔍 Genel Bakış' }}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ title: '⚙️ Ayarlar' }}
+          />
+        </Stack.Navigator>
+      </JSDrawer>
       <StatusBar style="light" />
     </NavigationContainer>
   );
@@ -103,7 +92,9 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <DrawerProvider>
+        <AppContent />
+      </DrawerProvider>
     </AppProvider>
   );
 }

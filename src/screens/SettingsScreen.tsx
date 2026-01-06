@@ -141,13 +141,19 @@ export default function SettingsScreen() {
     : ['#fa709a', '#fee140', '#30cfd0'] as const;
 
   return (
-    <LinearGradient
-      colors={gradientColors}
-      style={styles.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <ScrollView style={styles.container}>
+    <View style={{ flex: 1 }}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
+      >
         <View style={styles.content}>
           {/* Profil Bölümü */}
           <View style={styles.profileSection}>
@@ -410,20 +416,27 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   glassCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',

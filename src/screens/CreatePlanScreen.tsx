@@ -262,7 +262,10 @@ export default function CreatePlanScreen() {
                 ]}
                 onPress={() => setSelectedPriority('low')}
               >
-                <Text style={styles.priorityText}>🟢 Düşük</Text>
+                <View style={styles.priorityButtonContent}>
+                  <Text style={styles.priorityEmoji}>🟢</Text>
+                  <Text style={[styles.priorityText, { color: '#ffffff' }]}>Düşük</Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -272,7 +275,10 @@ export default function CreatePlanScreen() {
                 ]}
                 onPress={() => setSelectedPriority('medium')}
               >
-                <Text style={styles.priorityText}>🟡 Orta</Text>
+                <View style={styles.priorityButtonContent}>
+                  <Text style={styles.priorityEmoji}>🟡</Text>
+                  <Text style={[styles.priorityText, { color: '#ffffff' }]}>Orta</Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -282,7 +288,10 @@ export default function CreatePlanScreen() {
                 ]}
                 onPress={() => setSelectedPriority('high')}
               >
-                <Text style={styles.priorityText}>🔴 Yüksek</Text>
+                <View style={styles.priorityButtonContent}>
+                  <Text style={styles.priorityEmoji}>🔴</Text>
+                  <Text style={[styles.priorityText, { color: '#ffffff' }]}>Yüksek</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -521,10 +530,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  priorityButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityEmoji: {
+    fontSize: 14,
+  },
   priorityText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   inputRow: {
     flexDirection: 'row',
