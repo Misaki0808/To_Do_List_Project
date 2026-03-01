@@ -1,35 +1,34 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, ViewStyle, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions, ViewStyle, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { getToday, formatDateDisplay } from '../utils/dateUtils';
 
-const { width, height } = Dimensions.get('window');
-
 export default function PlanOverviewScreen() {
   const { plans } = useApp();
+  const { width, height } = useWindowDimensions();
   const [centerDate, setCenterDate] = useState(getToday());
 
   // Görüntülenecek 4 günü seç
   const surroundingDays = useMemo(() => {
     const allDates = Object.keys(plans).filter(date => date !== centerDate && plans[date].length > 0);
-    
+
     const futureDates = allDates
       .filter(date => date > centerDate)
       .sort(); // Artan sıralama (en yakın gelecek)
-      
+
     const pastDates = allDates
       .filter(date => date < centerDate)
       .sort((a, b) => b.localeCompare(a)); // Azalan sıralama (en yakın geçmiş)
-      
+
     let selected = [...futureDates];
-    
+
     // Eğer gelecek planlar 4'ten azsa, geçmişten tamamla
     if (selected.length < 4) {
       const needed = 4 - selected.length;
       selected = [...selected, ...pastDates.slice(0, needed)];
     }
-    
+
     // Sadece ilk 4'ünü al
     return selected.slice(0, 4);
   }, [plans, centerDate]);
@@ -53,7 +52,7 @@ export default function PlanOverviewScreen() {
         {sortedTasks.slice(0, limit).map((task, index) => (
           <View key={task.id} style={styles.taskRow}>
             <View style={[
-              styles.dot, 
+              styles.dot,
               { backgroundColor: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#feca57' : '#4CAF50' }
             ]} />
             <Text style={styles.taskText} numberOfLines={1}>{task.title}</Text>
@@ -76,14 +75,14 @@ export default function PlanOverviewScreen() {
       {/* Çevresel Nodlar (Arka planda) */}
       {surroundingDays.map((date, index) => {
         const posStyle: ViewStyle = index === 0 ? { top: '12%', left: 20 } :
-                        index === 1 ? { top: '12%', right: 20 } :
-                        index === 2 ? { bottom: '12%', left: 20 } :
-                        { bottom: '12%', right: 20 };
+          index === 1 ? { top: '12%', right: 20 } :
+            index === 2 ? { bottom: '12%', left: 20 } :
+              { bottom: '12%', right: 20 };
 
         return (
-          <TouchableOpacity 
-            key={date} 
-            style={[styles.surroundingNode, posStyle]}
+          <TouchableOpacity
+            key={date}
+            style={[styles.surroundingNode, { width: width * 0.4, height: height * 0.2 }, posStyle]}
             onPress={() => setCenterDate(date)}
             activeOpacity={0.8}
           >
@@ -101,7 +100,7 @@ export default function PlanOverviewScreen() {
 
       {/* Merkez (Seçili Gün) - En üstte */}
       <View style={styles.centerNodeContainer}>
-        <View style={styles.centerNode}>
+        <View style={[styles.centerNode, { width: width * 0.5, height: height * 0.32 }]}>
           <LinearGradient
             colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
             style={styles.centerGradient}
@@ -137,8 +136,6 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   centerNode: {
-    width: width * 0.5,
-    height: height * 0.32,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -177,8 +174,6 @@ const styles = StyleSheet.create({
   },
   surroundingNode: {
     position: 'absolute',
-    width: width * 0.4,
-    height: height * 0.2,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',

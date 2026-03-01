@@ -4,17 +4,16 @@ import {
     Text,
     StyleSheet,
     Animated,
-    Dimensions,
     TouchableOpacity,
     TouchableWithoutFeedback,
     ScrollView,
+    useWindowDimensions,
 } from 'react-native';
 import { useDrawer } from '../context/DrawerContext';
 import { useApp } from '../context/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { navigationRef } from '../utils/navigationRef';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = 280;
 
 type MenuItemProps = {
@@ -42,6 +41,7 @@ function MenuItem({ label, icon, onPress, isActive }: MenuItemProps) {
 export default function JSDrawer({ children }: { children: React.ReactNode }) {
     const { isDrawerOpen, closeDrawer } = useDrawer();
     const { username, gender } = useApp();
+    const { width: screenWidth } = useWindowDimensions();
 
     // Animasyon değeri: 0 (kapalı) -> 1 (açık)
     const animValue = useRef(new Animated.Value(0)).current;

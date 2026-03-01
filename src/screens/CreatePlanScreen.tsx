@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,11 @@ import { Task } from '../types';
 import { convertParagraphToTasks, checkApiKey } from '../utils/aiService';
 import CalendarModal from '../components/CalendarModal';
 import SuccessModal from '../components/SuccessModal';
+import VoiceInputButton from '../components/VoiceInputButton';
 
 export default function CreatePlanScreen() {
   const { plans, savePlan, settings } = useApp();
-  
+
   // State'ler
   const [selectedDate, setSelectedDate] = useState('');
   const [taskInput, setTaskInput] = useState('');
@@ -32,14 +33,15 @@ export default function CreatePlanScreen() {
   const [showCalendar, setShowCalendar] = useState(false); // Takvim modal
   const [showSuccessModal, setShowSuccessModal] = useState(false); // Başarı modal
   const [savedDate, setSavedDate] = useState(''); // Kaydedilen tarih
-  
+  const voiceBaseTextRef = useRef(''); // Sesli giriş öncesi mevcut metin
+
   // İlk açılışta default tarihi belirle - boş gün bulana kadar ilerle
   useEffect(() => {
     const findFirstEmptyDate = () => {
       let currentDate = getToday();
       let daysChecked = 0;
       const maxDays = 365; // Maksimum 1 yıl ileri bak
-      
+
       // Boş gün bulana kadar ilerle
       while (daysChecked < maxDays) {
         if (!plans[currentDate] || plans[currentDate].length === 0) {
@@ -49,33 +51,33 @@ export default function CreatePlanScreen() {
         currentDate = addDays(currentDate, 1);
         daysChecked++;
       }
-      
+
       // Hiç boş gün bulunamadıysa bugünü döndür
       return getToday();
     };
-    
+
     setSelectedDate(findFirstEmptyDate());
   }, [plans]);
-  
+
   // Manuel görev ekle
   const handleAddTask = () => {
     if (taskInput.trim() === '') {
       Alert.alert('Uyarı', 'Lütfen bir görev yazın');
       return;
     }
-    
+
     const newTask: Task = {
       id: Date.now().toString(), // Basit ID üretimi
       title: taskInput.trim(),
       done: false,
       priority: selectedPriority,
     };
-    
+
     setTasks([...tasks, newTask]);
     setTaskInput(''); // Input'u temizle
     setSelectedPriority('low'); // Priority'yi low olarak resetle
   };
-  
+
   // Görev sil
   const handleRemoveTask = (taskId: string) => {
     setTasks(tasks.filter(task => task.id !== taskId));
@@ -85,23 +87,23 @@ export default function CreatePlanScreen() {
   const handleChangePriority = (taskId: string) => {
     setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === taskId) {
-        const nextPriority = 
+        const nextPriority =
           task.priority === 'low' ? 'medium' :
-          task.priority === 'medium' ? 'high' :
-          'low';
+            task.priority === 'medium' ? 'high' :
+              'low';
         return { ...task, priority: nextPriority };
       }
       return task;
     }));
   };
-  
+
   // Planı kaydet
   const handleSavePlan = async () => {
     if (tasks.length === 0) {
       Alert.alert('Uyarı', 'En az bir görev eklemelisiniz');
       return;
     }
-    
+
     try {
       await savePlan(selectedDate, tasks);
       // Başarı modal'ını göster
@@ -111,7 +113,7 @@ export default function CreatePlanScreen() {
       Alert.alert('Hata', 'Plan kaydedilemedi');
     }
   };
-  
+
   // Success modal kapatıldığında formu temizle
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
@@ -125,7 +127,7 @@ export default function CreatePlanScreen() {
       let currentDate = addDays(getToday(), 0);
       let daysChecked = 0;
       const maxDays = 365;
-      
+
       while (daysChecked < maxDays) {
         if (!plans[currentDate] || plans[currentDate].length === 0) {
           return currentDate;
@@ -164,17 +166,18 @@ export default function CreatePlanScreen() {
 
     try {
       const aiTasks = await convertParagraphToTasks(paragraphInput);
-      
+
       // AI'dan gelen görevleri Task formatına çevir
       const newTasks: Task[] = aiTasks.map((title) => ({
         id: Date.now().toString() + Math.random().toString(),
         title,
         done: false,
+        priority: 'low' as const,
       }));
 
       setTasks([...tasks, ...newTasks]);
       setParagraphInput(''); // Paragrafı temizle
-      
+
       Alert.alert('Başarılı', `${aiTasks.length} görev oluşturuldu! 🎉`);
     } catch (error: any) {
       Alert.alert('AI Hatası', error.message || 'Görevler oluşturulamadı');
@@ -182,7 +185,7 @@ export default function CreatePlanScreen() {
       setIsAiLoading(false);
     }
   };
-  
+
   return (
     <LinearGradient
       colors={settings.darkMode ? ['#2a2d5a', '#1a1a2e', '#0f0f1e'] : ['#667eea', '#764ba2', '#f093fb']}
@@ -209,7 +212,7 @@ export default function CreatePlanScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-          
+
           {/* AI Paragraf Input */}
           {
             <View style={styles.aiSection}>
@@ -220,38 +223,56 @@ export default function CreatePlanScreen() {
                   placeholder="Örn: Sabah 7'de kalkıp kahvaltı yapacağım..."
                   placeholderTextColor="rgba(255, 255, 255, 0.6)"
                   value={paragraphInput}
-                  onChangeText={setParagraphInput}
+                  onChangeText={(text) => {
+                    setParagraphInput(text);
+                    voiceBaseTextRef.current = text;
+                  }}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
                   underlineColorAndroid="transparent"
                 />
+                {/* Alt kısım: Mikrofon + Gönder butonları */}
+                <View style={styles.inputActions}>
+                  <VoiceInputButton
+                    onTranscript={(transcript, isFinal) => {
+                      const base = voiceBaseTextRef.current;
+                      const separator = base.length > 0 && !base.endsWith(' ') ? ' ' : '';
+                      const newText = base + separator + transcript;
+                      setParagraphInput(newText);
+                      if (isFinal) {
+                        voiceBaseTextRef.current = newText;
+                      }
+                    }}
+                    disabled={isAiLoading}
+                  />
+                  <TouchableOpacity
+                    onPress={handleAiGenerate}
+                    disabled={isAiLoading || paragraphInput.trim() === ''}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={isAiLoading || paragraphInput.trim() === '' ? ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.1)'] : ['#667eea', '#764ba2']}
+                      style={styles.sendButton}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      {isAiLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.sendIcon}>➜</Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity
-                style={[styles.aiButton, isAiLoading && styles.aiButtonDisabled]}
-                onPress={handleAiGenerate}
-                disabled={isAiLoading}
-              >
-                <LinearGradient
-                  colors={isAiLoading ? ['#999', '#666'] : ['#f093fb', '#f5576c']}
-                  style={styles.aiButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isAiLoading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.aiButtonText}>✨ AI ile Görev Oluştur</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
             </View>
           }
-          
+
           {/* Manuel Görev Ekleme */}
           <View style={styles.inputSection}>
             <Text style={styles.label}>✏️ Manuel Görev Ekle</Text>
-            
+
             {/* Öncelik Seçici */}
             <View style={styles.prioritySelector}>
               <TouchableOpacity
@@ -319,29 +340,29 @@ export default function CreatePlanScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          
+
           {/* Görev Listesi */}
           {tasks.length > 0 && (
             <View style={styles.taskListSection}>
               <Text style={styles.label}>📝 Görevler ({tasks.length})</Text>
               {tasks.map((task, index) => {
-                const priorityColor = 
+                const priorityColor =
                   task.priority === 'high' ? '#F44336' :
-                  task.priority === 'medium' ? '#FFC107' :
-                  '#4CAF50';
-                
+                    task.priority === 'medium' ? '#FFC107' :
+                      '#4CAF50';
+
                 return (
                   <View key={task.id} style={styles.taskItem}>
                     <View style={[styles.glassCard, { borderLeftWidth: 4, borderLeftColor: priorityColor }]}>
                       <View style={styles.taskContent}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={[styles.taskNumberBadge, { backgroundColor: priorityColor }]}
                           onPress={() => handleChangePriority(task.id)}
                         >
                           <Text style={styles.taskNumber}>{index + 1}</Text>
                         </TouchableOpacity>
                         <Text style={styles.taskTitle}>{task.title}</Text>
-                        
+
                         <TouchableOpacity
                           onPress={() => handleRemoveTask(task.id)}
                           style={styles.removeButton}
@@ -355,7 +376,7 @@ export default function CreatePlanScreen() {
               })}
             </View>
           )}
-          
+
           {/* Kaydet Butonu */}
           <TouchableOpacity
             style={[styles.saveButton, tasks.length === 0 && styles.saveButtonDisabled]}
@@ -485,6 +506,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     minHeight: 100,
+  },
+  inputActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  sendButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendIcon: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '700',
   },
   aiButton: {
     borderRadius: 20,

@@ -1,10 +1,10 @@
 import Constants from 'expo-constants';
 
 // .env'den API key'i al (EXPO_PUBLIC_ prefix otomatik çalışır)
-const GEMINI_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_GEMINI_API_KEY || 
-                        Constants.manifest?.extra?.EXPO_PUBLIC_GEMINI_API_KEY ||
-                        process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
-                        '';
+const GEMINI_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_GEMINI_API_KEY ||
+  Constants.manifest?.extra?.EXPO_PUBLIC_GEMINI_API_KEY ||
+  process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
+  '';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -65,10 +65,10 @@ Görev listesi (sadece JSON array):`;
     }
 
     const data = await response.json();
-    
+
     // Gemini response'undan metni çıkar
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+
     if (!generatedText) {
       throw new Error('AI yanıt üretemedi');
     }
@@ -78,7 +78,7 @@ Görev listesi (sadece JSON array):`;
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
-    
+
     const tasks = JSON.parse(cleanedText);
 
     // Validasyon
@@ -94,7 +94,7 @@ Görev listesi (sadece JSON array):`;
 
   } catch (error: any) {
     console.error('AI Servis Hatası:', error);
-    
+
     // Kullanıcı dostu hata mesajları
     if (error.message.includes('API key')) {
       throw new Error('API anahtarı geçersiz');
@@ -113,4 +113,68 @@ Görev listesi (sadece JSON array):`;
  */
 export const checkApiKey = (): boolean => {
   return !!GEMINI_API_KEY;
+};
+
+/**
+ * Sesli girişten gelen metni AI ile düzelt
+ * Türkçe konuşma sırasında yanlış algılanan İngilizce teknik terimleri düzeltir
+ * @param rawTranscript - Ham ses tanıma çıktısı
+ * @returns Düzeltilmiş metin
+ */
+export const correctVoiceTranscript = async (rawTranscript: string): Promise<string> => {
+  if (!GEMINI_API_KEY) {
+    return rawTranscript; // API key yoksa ham metni döndür
+  }
+
+  const prompt = `
+Sen bir ses tanıma düzeltme asistanısın. Aşağıdaki metin Türkçe konuşma sırasında sesli giriş ile oluşturuldu.
+Ses tanıma sistemi İngilizce teknik terimleri yanlış algılamış olabilir.
+
+ÖRNEKLERİ İNCELE:
+- "Başkent Evlatlarım" → "backend developer"
+- "backent" → "backend"
+- "frontand" → "frontend"
+- "promp" → "prompt"
+- "fremvörk" veya "freymvörk" → "framework"
+- "hey ay" veya "hey ayrı" → "AI"
+- "databeys" → "database"
+- "dıploy" → "deploy"
+- "ripozitori" → "repository"
+- "ey pi ay" → "API"
+
+KURALLAR:
+1. Sadece yanlış algılanmış İngilizce teknik terimleri düzelt
+2. Doğru yazılmış Türkçe kelimeleri DEĞİŞTİRME
+3. Cümle yapısını ve anlamı koru
+4. SADECE düzeltilmiş metni döndür, başka bir şey yazma
+5. Eğer metin zaten doğruysa aynen döndür
+
+Ham metin: "${rawTranscript}"
+
+Düzeltilmiş metin:`;
+
+  const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }, // Düşük sıcaklık = daha deterministik
+      }),
+    });
+
+    if (!response.ok) {
+      return rawTranscript; // Hata durumunda ham metni döndür
+    }
+
+    const data = await response.json();
+    const correctedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    return correctedText || rawTranscript;
+  } catch (error) {
+    console.error('Ses düzeltme hatası:', error);
+    return rawTranscript; // Hata durumunda ham metni döndür
+  }
 };
