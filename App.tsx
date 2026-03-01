@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { DrawerProvider, useDrawer } from './src/context/DrawerContext';
 import JSDrawer from './src/components/JSDrawer';
@@ -113,11 +114,13 @@ function AppContent() {
 // Context Provider ile sarmalanmış ana component
 export default function App() {
   return (
-    <AppProvider>
-      <DrawerProvider>
-        <AppContent />
-      </DrawerProvider>
-    </AppProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppProvider>
+        <DrawerProvider>
+          <AppContent />
+        </DrawerProvider>
+      </AppProvider>
+    </GestureHandlerRootView>
   );
 }
 

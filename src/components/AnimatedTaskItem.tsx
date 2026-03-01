@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Task } from '../types';
 import { useApp } from '../context/AppContext';
@@ -30,18 +31,17 @@ export default function AnimatedTaskItem({
   const { settings } = useApp();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const swipeableRef = useRef<Swipeable>(null);
 
-  // Her görev için animasyon (mount ve task.id değişiminde)
   useEffect(() => {
-    // Animasyonu sıfırla ve başlat
     fadeAnim.setValue(0);
     scaleAnim.setValue(0.8);
-    
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 400,
-        delay: index * 80, // Her görev için gecikme
+        delay: index * 80,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -56,18 +56,16 @@ export default function AnimatedTaskItem({
 
   const priorityColor =
     task.priority === 'high' ? '#F44336' :
-    task.priority === 'medium' ? '#FFC107' :
-    '#4CAF50';
+      task.priority === 'medium' ? '#FFC107' :
+        '#4CAF50';
 
-  // Dark mode'a göre kart rengi
-  const cardBackgroundColor = settings.darkMode 
-    ? 'rgba(50, 50, 70, 0.95)' 
+  const cardBackgroundColor = settings.darkMode
+    ? 'rgba(50, 50, 70, 0.95)'
     : 'rgba(255, 255, 255, 0.9)';
-  
+
   const textColor = settings.darkMode ? '#fff' : '#333';
   const doneTextColor = settings.darkMode ? '#999' : '#999';
 
-  // Silme animasyonu trigger
   const triggerRemoveAnimation = () => {
     Animated.parallel([
       Animated.timing(scaleAnim, {
@@ -85,6 +83,117 @@ export default function AnimatedTaskItem({
     });
   };
 
+  // ← Sola kaydır → Sil (kırmızı arka plan)
+  const renderRightActions = () => {
+    return (
+      <TouchableOpacity
+        style={styles.swipeActionRight}
+        onPress={() => {
+          swipeableRef.current?.close();
+          triggerRemoveAnimation();
+        }}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#ff6b6b', '#ee5a24']}
+          style={styles.swipeActionGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.swipeActionIcon}>🗑</Text>
+          <Text style={styles.swipeActionText}>Sil</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  // → Sağa kaydır → Tamamla/Geri Al (yeşil arka plan)
+  const renderLeftActions = () => {
+    return (
+      <TouchableOpacity
+        style={styles.swipeActionLeft}
+        onPress={() => {
+          swipeableRef.current?.close();
+          onToggleDone();
+        }}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={task.done ? ['#FFC107', '#FF9800'] : ['#00b894', '#00cec9']}
+          style={styles.swipeActionGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.swipeActionIcon}>{task.done ? '↩️' : '✓'}</Text>
+          <Text style={styles.swipeActionText}>{task.done ? 'Geri Al' : 'Tamamla'}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  // Swipe threshold aşıldığında otomatik aksiyon
+  const handleSwipeOpen = (direction: 'left' | 'right') => {
+    if (direction === 'right') {
+      // Sola kaydırıldı → sil
+      setTimeout(() => {
+        swipeableRef.current?.close();
+        triggerRemoveAnimation();
+      }, 200);
+    } else if (direction === 'left') {
+      // Sağa kaydırıldı → tamamla
+      setTimeout(() => {
+        swipeableRef.current?.close();
+        onToggleDone();
+      }, 200);
+    }
+  };
+
+  const taskContent = (
+    <View style={[
+      styles.glassCard,
+      {
+        borderLeftWidth: 4,
+        borderLeftColor: priorityColor,
+        backgroundColor: cardBackgroundColor
+      }
+    ]}>
+      <TouchableOpacity
+        style={styles.taskItem}
+        onPress={() => !isEditMode && onToggleDone()}
+        activeOpacity={0.7}
+        disabled={isEditMode}
+      >
+        {/* Görev Numarası ve Başlığı */}
+        <View style={styles.taskContent}>
+          <TouchableOpacity
+            style={[styles.taskNumberBadge, { backgroundColor: priorityColor }]}
+            onPress={onChangePriority}
+            disabled={!isEditMode}
+          >
+            <Text style={styles.taskNumber}>{index + 1}</Text>
+          </TouchableOpacity>
+          <Text style={[
+            styles.taskTitle,
+            { color: textColor },
+            task.done && { textDecorationLine: 'line-through', color: doneTextColor }
+          ]}>
+            {task.title}
+          </Text>
+        </View>
+
+        {/* Silme Butonu (Edit Mode) */}
+        {isEditMode && (
+          <TouchableOpacity
+            onPress={triggerRemoveAnimation}
+            style={styles.removeButton}
+          >
+            <Text style={styles.removeButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <Animated.View
       style={[
@@ -95,63 +204,24 @@ export default function AnimatedTaskItem({
         },
       ]}
     >
-      <View style={[
-        styles.glassCard, 
-        { 
-          borderLeftWidth: 4, 
-          borderLeftColor: priorityColor,
-          backgroundColor: cardBackgroundColor 
-        }
-      ]}>
-        <TouchableOpacity
-          style={styles.taskItem}
-          onPress={() => !isEditMode && onToggleDone()}
-          activeOpacity={0.7}
-          disabled={isEditMode}
+      {isEditMode ? (
+        // Edit modda swipe devre dışı
+        taskContent
+      ) : (
+        <Swipeable
+          ref={swipeableRef}
+          renderRightActions={renderRightActions}
+          renderLeftActions={renderLeftActions}
+          onSwipeableOpen={handleSwipeOpen}
+          overshootRight={false}
+          overshootLeft={false}
+          friction={2}
+          rightThreshold={80}
+          leftThreshold={80}
         >
-          {/* Checkbox */}
-          {!isEditMode && (
-            <View style={[styles.checkbox, task.done && styles.checkboxChecked]}>
-              {task.done && (
-                <LinearGradient
-                  colors={['#4facfe', '#00f2fe']}
-                  style={styles.checkboxGradient}
-                >
-                  <Text style={styles.checkmark}>✓</Text>
-                </LinearGradient>
-              )}
-            </View>
-          )}
-
-          {/* Görev Numarası ve Başlığı */}
-          <View style={styles.taskContent}>
-            <TouchableOpacity
-              style={[styles.taskNumberBadge, { backgroundColor: priorityColor }]}
-              onPress={onChangePriority}
-              disabled={!isEditMode}
-            >
-              <Text style={styles.taskNumber}>{index + 1}</Text>
-            </TouchableOpacity>
-            <Text style={[
-              styles.taskTitle, 
-              { color: textColor },
-              task.done && { textDecorationLine: 'line-through', color: doneTextColor }
-            ]}>
-              {task.title}
-            </Text>
-          </View>
-
-          {/* Silme Butonu (Edit Mode) */}
-          {isEditMode && (
-            <TouchableOpacity
-              onPress={triggerRemoveAnimation}
-              style={styles.removeButton}
-            >
-              <Text style={styles.removeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </TouchableOpacity>
-      </View>
+          {taskContent}
+        </Swipeable>
+      )}
     </Animated.View>
   );
 }
@@ -239,5 +309,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  // Swipe action styles
+  swipeActionRight: {
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  swipeActionLeft: {
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  swipeActionGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    minWidth: 90,
+    flexDirection: 'column',
+    gap: 4,
+  },
+  swipeActionIcon: {
+    fontSize: 24,
+  },
+  swipeActionText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
