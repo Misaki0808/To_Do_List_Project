@@ -9,14 +9,15 @@ import {
     View,
     ActivityIndicator,
 } from 'react-native';
-import { correctVoiceTranscript, checkApiKey } from '../utils/aiService';
+import { correctVoiceTranscript, convertToSingleTask, checkApiKey } from '../utils/aiService';
 
 interface VoiceInputButtonProps {
     onTranscript: (text: string, isFinal: boolean) => void;
     disabled?: boolean;
+    mode?: 'paragraph' | 'task';
 }
 
-export default function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonProps) {
+export default function VoiceInputButton({ onTranscript, disabled, mode = 'paragraph' }: VoiceInputButtonProps) {
     const [isListening, setIsListening] = useState(false);
     const [isCorrecting, setIsCorrecting] = useState(false);
     const [isSupported, setIsSupported] = useState(false);
@@ -87,7 +88,8 @@ export default function VoiceInputButton({ onTranscript, disabled }: VoiceInputB
             const rawText = finalTranscriptRef.current.trim();
             if (rawText.length > 0 && checkApiKey()) {
                 setIsCorrecting(true);
-                correctVoiceTranscript(rawText)
+                const corrector = mode === 'task' ? convertToSingleTask : correctVoiceTranscript;
+                corrector(rawText)
                     .then((corrected) => onTranscript(corrected, true))
                     .finally(() => setIsCorrecting(false));
             }

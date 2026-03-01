@@ -317,7 +317,7 @@ export default function CreatePlanScreen() {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={styles.glassCard}>
+              <View style={[styles.glassCard, { flexDirection: 'row', alignItems: 'center' }]}>
                 <TextInput
                   style={styles.input}
                   placeholder="Örn: Alışverişe git"
@@ -326,6 +326,13 @@ export default function CreatePlanScreen() {
                   onChangeText={setTaskInput}
                   onSubmitEditing={handleAddTask}
                   returnKeyType="done"
+                />
+                <VoiceInputButton
+                  mode="task"
+                  onTranscript={(text, isFinal) => {
+                    if (isFinal) setTaskInput(text);
+                    else setTaskInput(text);
+                  }}
                 />
               </View>
               <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>

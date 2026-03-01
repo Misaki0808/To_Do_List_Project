@@ -15,22 +15,21 @@ export default function PlanOverviewScreen() {
 
     const futureDates = allDates
       .filter(date => date > centerDate)
-      .sort(); // Artan sıralama (en yakın gelecek)
+      .sort();
 
     const pastDates = allDates
       .filter(date => date < centerDate)
-      .sort((a, b) => b.localeCompare(a)); // Azalan sıralama (en yakın geçmiş)
+      .sort((a, b) => b.localeCompare(a));
 
     let selected = [...futureDates];
 
-    // Eğer gelecek planlar 4'ten azsa, geçmişten tamamla
     if (selected.length < 4) {
       const needed = 4 - selected.length;
       selected = [...selected, ...pastDates.slice(0, needed)];
     }
 
-    // Sadece ilk 4'ünü al
-    return selected.slice(0, 4);
+    // Kronolojik siraya gore sirala (eski -> yeni)
+    return selected.slice(0, 4).sort();
   }, [plans, centerDate]);
 
   const getPriorityWeight = (p?: string) => {

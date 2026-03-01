@@ -175,6 +175,49 @@ Düzeltilmiş metin:`;
     return correctedText || rawTranscript;
   } catch (error) {
     console.error('Ses düzeltme hatası:', error);
-    return rawTranscript; // Hata durumunda ham metni döndür
+    return rawTranscript;
+  }
+};
+
+// Sesli girdiyi tek bir görev başlığına dönüştür
+export const convertToSingleTask = async (rawTranscript: string): Promise<string> => {
+  if (!GEMINI_API_KEY) return rawTranscript;
+
+  const prompt = `Aşağıdaki sesli girdiyi kısa ve öz tek bir görev başlığına dönüştür.
+
+ÖRNEKLER:
+- "yarın okula gitmem lazım" → "Okula git"
+- "bir de backend çalışmam gerekiyor" → "Backend çalış"
+- "spor yapmalıyım akşam" → "Spor yap"
+- "react native projesini bitir" → "React Native projesini bitir"
+
+KURALLAR:
+1. Sadece tek bir kısa görev başlığı döndür
+2. Fiili emir kipinde yaz (git, yap, çalış, oku)
+3. Gereksiz kelimeleri çıkar (lazım, gerekiyor, bir de, yarın)
+4. İngilizce teknik terimleri koru
+5. SADECE görev başlığını döndür, başka bir şey yazma
+
+Sesli girdi: "${rawTranscript}"
+
+Görev başlığı:`;
+
+  const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 },
+      }),
+    });
+
+    if (!response.ok) return rawTranscript;
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || rawTranscript;
+  } catch {
+    return rawTranscript;
   }
 };

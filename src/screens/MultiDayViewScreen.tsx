@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Platform,
   Linking,
   Share,
+  TextInput,
+  Animated as RNAnimated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
@@ -18,6 +20,7 @@ import CopyPlanModal from '../components/CopyPlanModal';
 import ShareModal from '../components/ShareModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import AnimatedTaskItem from '../components/AnimatedTaskItem';
+import VoiceInputButton from '../components/VoiceInputButton';
 
 // Sadece native platformlarda import et
 let RNShare: any = null;
@@ -36,7 +39,11 @@ export default function MultiDayViewScreen() {
   const [isEditMode, setIsEditMode] = useState(false); // Düzenleme modu
   const [isCopyModalVisible, setIsCopyModalVisible] = useState(false); // Kopyalama modal
   const [isShareModalVisible, setIsShareModalVisible] = useState(false); // Paylaşım modal
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // Silme onay modal
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [deletedTask, setDeletedTask] = useState<Task | null>(null);
+  const [quickAddText, setQuickAddText] = useState('');
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoAnim = useRef(new RNAnimated.Value(0)).current;
 
   // Seçilen tarih değiştiğinde görevleri güncelle
   useEffect(() => {
@@ -73,39 +80,77 @@ export default function MultiDayViewScreen() {
   // Yüzdelik hesaplama (priority'ye göre ağırlıklı)
   const calculatePercentage = () => {
     if (totalCount === 0) return 0;
-    
+
     const totalWeight = currentTasks.reduce((sum, task) => {
       const weight = task.priority === 'high' ? 3 : task.priority === 'medium' ? 2 : 1;
       return sum + weight;
     }, 0);
-    
+
     const completedWeight = currentTasks
       .filter(task => task.done)
       .reduce((sum, task) => {
         const weight = task.priority === 'high' ? 3 : task.priority === 'medium' ? 2 : 1;
         return sum + weight;
       }, 0);
-    
+
     return Math.round((completedWeight / totalWeight) * 100);
   };
 
   const percentage = calculatePercentage();
 
-  // Görev sil (edit mode)
+  // Gorev sil (edit mode veya swipe) + geri al destegi
   const handleRemoveTask = async (taskId: string) => {
+    const taskToDelete = currentTasks.find(task => task.id === taskId);
     const updatedTasks = currentTasks.filter(task => task.id !== taskId);
     await savePlan(selectedDate, updatedTasks);
     await refreshPlans();
+    if (taskToDelete) {
+      setDeletedTask(taskToDelete);
+      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+      RNAnimated.timing(undoAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      undoTimeoutRef.current = setTimeout(() => {
+        RNAnimated.timing(undoAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+          setDeletedTask(null);
+        });
+      }, 5000);
+    }
+  };
+
+  // Geri al
+  const handleUndoDelete = async () => {
+    if (!deletedTask) return;
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    const restoredTasks = [...currentTasks, deletedTask];
+    await savePlan(selectedDate, restoredTasks);
+    await refreshPlans();
+    RNAnimated.timing(undoAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    setDeletedTask(null);
+  };
+
+  // Hizli gorev ekle
+  const handleQuickAddTask = async () => {
+    const title = quickAddText.trim();
+    if (!title) return;
+    const newTask: Task = {
+      id: Date.now().toString() + Math.random().toString(),
+      title,
+      done: false,
+      priority: 'low',
+    };
+    const updatedTasks = [...currentTasks, newTask];
+    await savePlan(selectedDate, updatedTasks);
+    await refreshPlans();
+    setQuickAddText('');
   };
 
   // Priority değiştir (edit mode)
   const handleChangePriority = async (taskId: string) => {
     const updatedTasks = currentTasks.map(task => {
       if (task.id === taskId) {
-        const nextPriority: 'low' | 'medium' | 'high' = 
+        const nextPriority: 'low' | 'medium' | 'high' =
           task.priority === 'low' ? 'medium' :
-          task.priority === 'medium' ? 'high' :
-          'low';
+            task.priority === 'medium' ? 'high' :
+              'low';
         return { ...task, priority: nextPriority };
       }
       return task;
@@ -128,9 +173,9 @@ export default function MultiDayViewScreen() {
           `${formatDateDisplay(selectedDate)} tarihindeki tüm görevleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
           [
             { text: 'İptal', style: 'cancel' },
-            { 
-              text: 'Sil', 
-              style: 'destructive', 
+            {
+              text: 'Sil',
+              style: 'destructive',
               onPress: confirmDelete
             }
           ]
@@ -152,7 +197,7 @@ export default function MultiDayViewScreen() {
   // Planı kopyala
   const handleCopyPlan = async (targetDate: string, selectedTasks: Task[]) => {
     const existingTasks = plans[targetDate] || [];
-    
+
     // Yeni görevlere benzersiz ID ver
     const newTasks = selectedTasks.map(task => ({
       ...task,
@@ -164,7 +209,7 @@ export default function MultiDayViewScreen() {
     const allTasks = [...existingTasks, ...newTasks];
     await savePlan(targetDate, allTasks);
     await refreshPlans();
-    
+
     Alert.alert(
       'Başarılı',
       `${selectedTasks.length} görev ${targetDate} tarihine kopyalandı.`,
@@ -186,16 +231,16 @@ export default function MultiDayViewScreen() {
     // Paylaşım metnini oluştur
     let shareText = `📅 ${formatDateDisplay(selectedDate)}\n`;
     shareText += `📝 Bugünkü Planım (${completedCount}/${totalCount} tamamlandı)\n\n`;
-    
+
     currentTasks.forEach((task, index) => {
       const emoji = task.done ? '✅' : '⬜';
-      const priorityEmoji = 
+      const priorityEmoji =
         task.priority === 'high' ? '🔴' :
-        task.priority === 'medium' ? '🟡' :
-        '🟢';
+          task.priority === 'medium' ? '🟡' :
+            '🟢';
       shareText += `${emoji} ${priorityEmoji} ${index + 1}. ${task.title}\n`;
     });
-    
+
     shareText += `\n💪 ${percentage}% tamamlandı!\n`;
     shareText += `\n#DailyPlanner #PlanımıPaylaşıyorum`;
 
@@ -235,16 +280,16 @@ export default function MultiDayViewScreen() {
   const getShareText = () => {
     let shareText = `📅 ${formatDateDisplay(selectedDate)}\n`;
     shareText += `📝 Bugünkü Planım (${completedCount}/${totalCount} tamamlandı)\n\n`;
-    
+
     currentTasks.forEach((task, index) => {
       const emoji = task.done ? '✅' : '⬜';
-      const priorityEmoji = 
+      const priorityEmoji =
         task.priority === 'high' ? '🔴' :
-        task.priority === 'medium' ? '🟡' :
-        '🟢';
+          task.priority === 'medium' ? '🟡' :
+            '🟢';
       shareText += `${emoji} ${priorityEmoji} ${index + 1}. ${task.title}\n`;
     });
-    
+
     shareText += `\n💪 ${percentage}% tamamlandı!\n`;
     shareText += `\n#DailyPlanner #PlanımıPaylaşıyorum`;
 
@@ -262,7 +307,7 @@ export default function MultiDayViewScreen() {
   // Metni kopyala
   const copyToClipboard = async () => {
     const shareText = getShareText();
-    
+
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(shareText);
@@ -293,7 +338,7 @@ export default function MultiDayViewScreen() {
               >
                 <Text style={styles.navButtonText}>←</Text>
               </TouchableOpacity>
-              
+
               <View style={styles.currentDateContainer}>
                 <Text style={styles.currentDate}>{formatDateDisplay(selectedDate)}</Text>
                 {selectedDate === getToday() && (
@@ -302,7 +347,7 @@ export default function MultiDayViewScreen() {
                   </View>
                 )}
               </View>
-              
+
               <TouchableOpacity
                 style={styles.navButton}
                 onPress={() => changeDate(1)}
@@ -364,35 +409,69 @@ export default function MultiDayViewScreen() {
                   </TouchableOpacity>
                 </>
               ) : (
-                // Edit mod - Sadece Bitti ve Sil
+                // Edit mod
                 <>
-                  {/* Bitti Butonu */}
+                  {/* Hizli Gorev Ekle - input ile ic ice */}
+                  <View style={styles.quickAddWrapper}>
+                    <TextInput
+                      style={styles.quickAddInput}
+                      placeholder="Yeni gorev ekle..."
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                      value={quickAddText}
+                      onChangeText={setQuickAddText}
+                      onSubmitEditing={handleQuickAddTask}
+                      returnKeyType="done"
+                    />
+                    <VoiceInputButton
+                      mode="task"
+                      onTranscript={(text, isFinal) => {
+                        if (isFinal) setQuickAddText(text);
+                        else setQuickAddText(text);
+                      }}
+                    />
+                    <TouchableOpacity
+                      onPress={handleQuickAddTask}
+                      disabled={quickAddText.trim() === ''}
+                      activeOpacity={0.7}
+                      style={styles.quickAddBtnInline}
+                    >
+                      <LinearGradient
+                        colors={quickAddText.trim() === '' ? ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.1)'] : ['#00b894', '#00cec9']}
+                        style={styles.quickAddButton}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      >
+                        <Text style={styles.quickAddButtonText}>+</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Bitti + Sil (kompakt) */}
                   <TouchableOpacity
-                    style={styles.actionButton}
                     onPress={() => setIsEditMode(false)}
+                    activeOpacity={0.7}
                   >
                     <LinearGradient
                       colors={['#f093fb', '#f5576c']}
-                      style={styles.actionButtonGradient}
+                      style={styles.compactButton}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.actionButtonText}>✓ Bitti</Text>
+                      <Text style={styles.compactButtonText}>{"\u2715"}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  {/* Günü Sil Butonu */}
                   <TouchableOpacity
-                    style={styles.deleteButton}
                     onPress={handleDeleteDay}
+                    activeOpacity={0.7}
                   >
                     <LinearGradient
                       colors={['#ff6b6b', '#ee5a6f']}
-                      style={styles.deleteButtonGradient}
+                      style={styles.compactButton}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.deleteButtonText}>✕</Text>
+                      <Text style={styles.compactButtonIcon}>{"\uD83D\uDDD1"}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -450,6 +529,29 @@ export default function MultiDayViewScreen() {
             ))
           )}
         </ScrollView>
+
+        {/* Geri Al Snackbar */}
+        {deletedTask && (
+          <RNAnimated.View style={[
+            styles.undoSnackbar,
+            {
+              opacity: undoAnim,
+              transform: [{ translateY: undoAnim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }],
+            },
+          ]}>
+            <Text style={styles.undoText} numberOfLines={1}>{deletedTask.title} silindi</Text>
+            <TouchableOpacity onPress={handleUndoDelete} activeOpacity={0.7}>
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                style={styles.undoButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.undoButtonText}>Geri Al</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </RNAnimated.View>
+        )}
 
         {/* Kopyalama Modal */}
         <CopyPlanModal
@@ -708,6 +810,88 @@ const styles = StyleSheet.create({
   removeButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '700',
+  },
+  quickAddWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 14,
+    paddingLeft: 14,
+    paddingRight: 4,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  quickAddInput: {
+    flex: 1,
+    height: 36,
+    fontSize: 14,
+    color: '#fff',
+    outlineStyle: 'none' as any,
+  },
+  quickAddBtnInline: {
+    marginLeft: 4,
+  },
+  quickAddButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickAddButtonText: {
+    fontSize: 20,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  compactButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compactButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  compactButtonIcon: {
+    fontSize: 18,
+  },
+  undoSnackbar: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(30, 30, 50, 0.95)',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  undoText: {
+    color: '#fff',
+    fontSize: 14,
+    flex: 1,
+    marginRight: 12,
+  },
+  undoButtonGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  undoButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '700',
   },
 });

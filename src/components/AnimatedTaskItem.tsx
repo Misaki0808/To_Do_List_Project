@@ -83,8 +83,18 @@ export default function AnimatedTaskItem({
     });
   };
 
-  // ← Sola kaydır → Sil (kırmızı arka plan)
-  const renderRightActions = () => {
+  // Sola kaydır -> Sil (kirmizi, dinamik scale)
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, -50, 0],
+      outputRange: [1, 0.8, 0],
+      extrapolate: 'clamp',
+    });
+    const opacity = dragX.interpolate({
+      inputRange: [-80, -30, 0],
+      outputRange: [1, 0.6, 0],
+      extrapolate: 'clamp',
+    });
     return (
       <TouchableOpacity
         style={styles.swipeActionRight}
@@ -94,21 +104,33 @@ export default function AnimatedTaskItem({
         }}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={['#ff6b6b', '#ee5a24']}
-          style={styles.swipeActionGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.swipeActionIcon}>🗑</Text>
-          <Text style={styles.swipeActionText}>Sil</Text>
-        </LinearGradient>
+        <Animated.View style={[styles.swipeActionInner, { transform: [{ scale }], opacity }]}>
+          <LinearGradient
+            colors={['#ff6b6b', '#ee5a24']}
+            style={styles.swipeActionGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.swipeActionIcon}>🗑</Text>
+            <Text style={styles.swipeActionText}>Sil</Text>
+          </LinearGradient>
+        </Animated.View>
       </TouchableOpacity>
     );
   };
 
-  // → Sağa kaydır → Tamamla/Geri Al (yeşil arka plan)
-  const renderLeftActions = () => {
+  // Saga kaydir -> Tamamla/Geri Al (yesil, dinamik scale)
+  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [0, 50, 100],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+    const opacity = dragX.interpolate({
+      inputRange: [0, 30, 80],
+      outputRange: [0, 0.6, 1],
+      extrapolate: 'clamp',
+    });
     return (
       <TouchableOpacity
         style={styles.swipeActionLeft}
@@ -118,15 +140,17 @@ export default function AnimatedTaskItem({
         }}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={task.done ? ['#FFC107', '#FF9800'] : ['#00b894', '#00cec9']}
-          style={styles.swipeActionGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.swipeActionIcon}>{task.done ? '↩️' : '✓'}</Text>
-          <Text style={styles.swipeActionText}>{task.done ? 'Geri Al' : 'Tamamla'}</Text>
-        </LinearGradient>
+        <Animated.View style={[styles.swipeActionInner, { transform: [{ scale }], opacity }]}>
+          <LinearGradient
+            colors={task.done ? ['#FFC107', '#FF9800'] : ['#00b894', '#00cec9']}
+            style={styles.swipeActionGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.swipeActionIcon}>{task.done ? '↩️' : '✓'}</Text>
+            <Text style={styles.swipeActionText}>{task.done ? 'Geri Al' : 'Tamamla'}</Text>
+          </LinearGradient>
+        </Animated.View>
       </TouchableOpacity>
     );
   };
@@ -187,7 +211,7 @@ export default function AnimatedTaskItem({
             onPress={triggerRemoveAnimation}
             style={styles.removeButton}
           >
-            <Text style={styles.removeButtonText}>✕</Text>
+            <Text style={styles.removeButtonText}>🗑</Text>
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -297,18 +321,16 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   removeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ff6b6b',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 100, 100, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   removeButtonText: {
-    color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
   },
   // Swipe action styles
   swipeActionRight: {
@@ -318,6 +340,10 @@ const styles = StyleSheet.create({
   swipeActionLeft: {
     justifyContent: 'center',
     marginBottom: 12,
+  },
+  swipeActionInner: {
+    flex: 1,
+    justifyContent: 'center',
   },
   swipeActionGradient: {
     flex: 1,
