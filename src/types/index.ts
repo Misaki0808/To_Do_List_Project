@@ -6,6 +6,18 @@ export interface Task {
   priority?: 'low' | 'medium' | 'high'; // Yeşil, Sarı, Kırmızı
 }
 
+// Tekrarlayan görev tipi
+export interface RecurringTask {
+  id: string;
+  title: string;
+  priority: 'low' | 'medium' | 'high';
+  frequency: 'daily' | 'weekly' | 'monthly';
+  weekDay?: number;      // weekly: 0=Pazar, 1=Pazartesi... 6=Cumartesi
+  monthDay?: number;     // monthly: 1-31
+  isActive: boolean;
+  createdAt: string;     // YYYY-MM-DD
+}
+
 // Plan tipi - bir gün için plan
 export interface DayPlan {
   date: string; // YYYY-MM-DD formatında

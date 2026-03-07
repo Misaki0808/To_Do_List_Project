@@ -8,18 +8,29 @@ import {
   ScrollView,
   Alert,
   Switch,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
+import { RecurringTask } from '../types';
+import VoiceInputButton from '../components/VoiceInputButton';
 import { scheduleDailyNotification, cancelAllNotifications, requestNotificationPermissions } from '../utils/notificationService';
 
 export default function SettingsScreen() {
-  const { username, setUsername, plans, gender, setGender, settings, updateSettings, theme } = useApp();
+  const { username, setUsername, plans, gender, setGender, settings, updateSettings, theme, recurringTasks, addRecurringTask, removeRecurringTask, toggleRecurringTask } = useApp();
   const [nameInput, setNameInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [notificationHour, setNotificationHour] = useState('08');
   const [notificationMinute, setNotificationMinute] = useState('00');
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Recurring task modal state
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [rtTitle, setRtTitle] = useState('');
+  const [rtPriority, setRtPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [rtFrequency, setRtFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [rtWeekDay, setRtWeekDay] = useState(1); // Pazartesi
+  const [rtMonthDay, setRtMonthDay] = useState(1);
 
   // İlk açılışta kullanıcı adı yoksa düzenleme modunu aç
   useEffect(() => {
@@ -59,7 +70,7 @@ export default function SettingsScreen() {
   const calculateStats = () => {
     const planDates = Object.keys(plans);
     const totalPlans = planDates.length;
-    
+
     let totalTasks = 0;
     let completedTasks = 0;
 
@@ -89,7 +100,7 @@ export default function SettingsScreen() {
         Alert.alert('İzin Gerekli', 'Bildirimler için izin vermeniz gerekiyor.');
         return;
       }
-      
+
       // Bildirimi planla
       const hour = parseInt(notificationHour);
       const minute = parseInt(notificationMinute);
@@ -106,20 +117,20 @@ export default function SettingsScreen() {
   const handleSaveNotificationTime = async () => {
     const hour = parseInt(notificationHour);
     const minute = parseInt(notificationMinute);
-    
+
     if (isNaN(hour) || hour < 0 || hour > 23) {
       Alert.alert('Hata', 'Saat 0-23 arasında olmalı');
       return;
     }
-    
+
     if (isNaN(minute) || minute < 0 || minute > 59) {
       Alert.alert('Hata', 'Dakika 0-59 arasında olmalı');
       return;
     }
-    
+
     const timeString = `${notificationHour.padStart(2, '0')}:${notificationMinute.padStart(2, '0')}`;
     await updateSettings({ notificationTime: timeString });
-    
+
     // Eğer bildirimler açıksa, yeni saate göre yeniden planla
     if (settings.notificationsEnabled) {
       await scheduleDailyNotification(hour, minute);
@@ -129,10 +140,33 @@ export default function SettingsScreen() {
     }
   };
 
+  // Tekrarlayan görev ekle
+  const handleAddRecurring = async () => {
+    if (!rtTitle.trim()) {
+      Alert.alert('Uyarı', 'Görev adı boş olamaz');
+      return;
+    }
+    await addRecurringTask({
+      title: rtTitle.trim(),
+      priority: rtPriority,
+      frequency: rtFrequency,
+      weekDay: rtFrequency === 'weekly' ? rtWeekDay : undefined,
+      monthDay: rtFrequency === 'monthly' ? rtMonthDay : undefined,
+      isActive: true,
+    });
+    setRtTitle('');
+    setRtPriority('medium');
+    setRtFrequency('daily');
+    setShowRecurringModal(false);
+  };
+
+  const weekDayNames = ['Pzr', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const frequencyLabels: Record<string, string> = { daily: 'Günlük', weekly: 'Haftalık', monthly: 'Aylık' };
+
   const stats = calculateStats();
 
   // Tema renklerini al
-  const gradientColors = settings.darkMode 
+  const gradientColors = settings.darkMode
     ? ['#2a2d5a', '#1a1a2e', '#0f0f1e'] as const
     : ['#fa709a', '#fee140', '#30cfd0'] as const;
 
@@ -144,8 +178,8 @@ export default function SettingsScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      <ScrollView 
-        style={styles.container} 
+      <ScrollView
+        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
@@ -295,6 +329,62 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Tekrarlayan Görevler */}
+          <View style={styles.recurringSection}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.sectionTitle}>🔁 Tekrarlayan Görevler</Text>
+              <TouchableOpacity onPress={() => setShowRecurringModal(true)} activeOpacity={0.7}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={{ width: 40, height: 40, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>+</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {recurringTasks.length === 0 ? (
+              <View style={styles.glassCard}>
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center' }}>
+                    Henüz tekrarlayan görev yok.{'\n'}Yukarıdaki + butonuyla ekleyebilirsin.
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              recurringTasks.map((rt) => (
+                <View key={rt.id} style={[styles.glassCard, { marginBottom: 10 }]}>
+                  <View style={styles.recurringItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{rt.title}</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
+                        {frequencyLabels[rt.frequency]}
+                        {rt.frequency === 'weekly' && rt.weekDay !== undefined ? ` · ${weekDayNames[rt.weekDay]}` : ''}
+                        {rt.frequency === 'monthly' && rt.monthDay ? ` · Her ayın ${rt.monthDay}. günü` : ''}
+                        {' · '}
+                        {rt.priority === 'high' ? '🔴' : rt.priority === 'medium' ? '🟡' : '🟢'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={rt.isActive}
+                      onValueChange={() => toggleRecurringTask(rt.id)}
+                      trackColor={{ false: 'rgba(255,255,255,0.2)', true: 'rgba(67,233,123,0.7)' }}
+                      thumbColor={rt.isActive ? '#43e97b' : '#f4f3f4'}
+                    />
+                    <TouchableOpacity
+                      onPress={() => removeRecurringTask(rt.id)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      <Text style={{ fontSize: 20 }}>🗑</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+
           {/* Hakkında */}
           <View style={styles.aboutSection}>
             <Text style={styles.sectionTitle}>ℹ️ Hakkında</Text>
@@ -312,7 +402,7 @@ export default function SettingsScreen() {
           {/* Tercihler */}
           <View style={styles.preferencesSection}>
             <Text style={styles.sectionTitle}>⚙️ Tercihler</Text>
-            
+
             {/* Dark Mode */}
             <View style={styles.glassCard}>
               <View style={styles.preferenceItem}>
@@ -349,7 +439,7 @@ export default function SettingsScreen() {
                   ios_backgroundColor="rgba(255, 255, 255, 0.3)"
                 />
               </View>
-              
+
               {/* Bildirim Saati */}
               {settings.notificationsEnabled && (
                 <View style={styles.timePickerContainer}>
@@ -380,7 +470,7 @@ export default function SettingsScreen() {
                       />
                       <Text style={styles.timeInputLabel}>Dakika</Text>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.saveTimeButton}
                       onPress={handleSaveNotificationTime}
                     >
@@ -412,6 +502,116 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Tekrarlayan Görev Ekleme Modalı */}
+      <Modal visible={showRecurringModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Tekrarlayan Görev Ekle</Text>
+
+            {/* Görev Adı */}
+            <View style={styles.modalInputRow}>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Görev adı..."
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={rtTitle}
+                onChangeText={setRtTitle}
+              />
+              <VoiceInputButton
+                mode="task"
+                onTranscript={(text) => setRtTitle(text)}
+              />
+            </View>
+
+            {/* Sıklık */}
+            <Text style={styles.modalLabel}>Sıklık</Text>
+            <View style={styles.freqRow}>
+              {(['daily', 'weekly', 'monthly'] as const).map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => setRtFrequency(f)}
+                  style={[styles.freqButton, rtFrequency === f && styles.freqButtonActive]}
+                >
+                  <Text style={[styles.freqButtonText, rtFrequency === f && { color: '#fff' }]}>
+                    {frequencyLabels[f]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Haftalık gün seçimi */}
+            {rtFrequency === 'weekly' && (
+              <View style={styles.weekDayRow}>
+                {weekDayNames.map((name, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => setRtWeekDay(i)}
+                    style={[styles.weekDayButton, rtWeekDay === i && styles.weekDayButtonActive]}
+                  >
+                    <Text style={[styles.weekDayText, rtWeekDay === i && { color: '#fff' }]}>{name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Aylık gün seçimi */}
+            {rtFrequency === 'monthly' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                <Text style={styles.modalLabel}>Her ayın </Text>
+                <TextInput
+                  style={[styles.modalInput, { width: 50, textAlign: 'center' }]}
+                  value={String(rtMonthDay)}
+                  onChangeText={(t) => setRtMonthDay(Math.min(31, Math.max(1, parseInt(t) || 1)))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+                <Text style={styles.modalLabel}>. günü</Text>
+              </View>
+            )}
+
+            {/* Öncelik */}
+            <Text style={[styles.modalLabel, { marginTop: 16 }]}>Öncelik</Text>
+            <View style={styles.freqRow}>
+              {(['low', 'medium', 'high'] as const).map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => setRtPriority(p)}
+                  style={[styles.freqButton, rtPriority === p && styles.freqButtonActive,
+                  rtPriority === p && { borderColor: p === 'high' ? '#ff6b6b' : p === 'medium' ? '#FFC107' : '#4CAF50' }
+                  ]}
+                >
+                  <Text style={styles.freqButtonText}>
+                    {p === 'high' ? '🔴 Yüksek' : p === 'medium' ? '🟡 Orta' : '🟢 Düşük'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Butonlar */}
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => setShowRecurringModal(false)}
+              >
+                <View style={styles.modalCancelBtn}>
+                  <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>İptal</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1 }} onPress={handleAddRecurring}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={styles.modalSaveBtn}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700', textAlign: 'center' }}>Kaydet</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -712,5 +912,106 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#fff',
+  },
+  recurringSection: {
+    marginBottom: 24,
+  },
+  recurringItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1e1e3a',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  modalInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  modalInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 16,
+    color: '#fff',
+  },
+  freqRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  freqButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  freqButtonActive: {
+    backgroundColor: 'rgba(102,126,234,0.3)',
+    borderColor: '#667eea',
+  },
+  freqButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  weekDayRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 12,
+  },
+  weekDayButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+  },
+  weekDayButtonActive: {
+    backgroundColor: 'rgba(102,126,234,0.4)',
+  },
+  weekDayText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  modalCancelBtn: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  modalSaveBtn: {
+    paddingVertical: 14,
+    borderRadius: 14,
   },
 });

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plans, Task, Settings } from '../types';
+import { Plans, Task, Settings, RecurringTask } from '../types';
 
 // Storage anahtarları - tek yerden yönetmek için
 const STORAGE_KEYS = {
@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
   USER_NAME: '@daily_planner_user_name',
   GENDER: '@daily_planner_gender',
   SETTINGS: '@daily_planner_settings',
+  RECURRING_TASKS: '@daily_planner_recurring_tasks',
+  LAST_RECURRING_SYNC: '@daily_planner_last_recurring_sync',
 };
 
 /**
@@ -186,6 +188,46 @@ export const getSettings = async (): Promise<Settings> => {
       notificationsEnabled: true,
       notificationTime: '08:00',
     };
+  }
+};
+
+// TEKRARLAYAN GOREVLERI GETIR
+export const getRecurringTasks = async (): Promise<RecurringTask[]> => {
+  try {
+    const json = await AsyncStorage.getItem(STORAGE_KEYS.RECURRING_TASKS);
+    return json ? JSON.parse(json) : [];
+  } catch (error) {
+    console.error('Tekrarlayan gorevler okunurken hata:', error);
+    return [];
+  }
+};
+
+// TEKRARLAYAN GOREVLERI KAYDET
+export const saveRecurringTasks = async (tasks: RecurringTask[]) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.RECURRING_TASKS, JSON.stringify(tasks));
+    return true;
+  } catch (error) {
+    console.error('Tekrarlayan gorevler kaydedilirken hata:', error);
+    return false;
+  }
+};
+
+// SON SENKRONIZASYON TARIHINI GETIR
+export const getLastRecurringSync = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(STORAGE_KEYS.LAST_RECURRING_SYNC);
+  } catch {
+    return null;
+  }
+};
+
+// SON SENKRONIZASYON TARIHINI KAYDET
+export const saveLastRecurringSync = async (date: string) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.LAST_RECURRING_SYNC, date);
+  } catch {
+    // ignore
   }
 };
 
