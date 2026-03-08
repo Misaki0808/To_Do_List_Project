@@ -19,6 +19,7 @@ import { convertParagraphToTasks, checkApiKey } from '../utils/aiService';
 import CalendarModal from '../components/CalendarModal';
 import SuccessModal from '../components/SuccessModal';
 import VoiceInputButton from '../components/VoiceInputButton';
+import NoteEditModal from '../components/NoteEditModal';
 
 export default function CreatePlanScreen() {
   const { plans, savePlan, settings } = useApp();
@@ -32,7 +33,8 @@ export default function CreatePlanScreen() {
   const [isAiLoading, setIsAiLoading] = useState(false); // AI yükleniyor mu?
   const [showCalendar, setShowCalendar] = useState(false); // Takvim modal
   const [showSuccessModal, setShowSuccessModal] = useState(false); // Başarı modal
-  const [savedDate, setSavedDate] = useState(''); // Kaydedilen tarih
+  const [savedDate, setSavedDate] = useState('');
+  const [editingNoteTaskId, setEditingNoteTaskId] = useState<string | null>(null);
   const voiceBaseTextRef = useRef(''); // Sesli giriş öncesi mevcut metin
 
   // İlk açılışta default tarihi belirle - boş gün bulana kadar ilerle
@@ -367,30 +369,7 @@ export default function CreatePlanScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={{ flex: 1 }}
-                          onPress={() => {
-                            Alert.prompt(
-                              task.note ? 'Notu Düzenle' : 'Not Ekle',
-                              task.title,
-                              [
-                                {
-                                  text: task.note ? 'Sil' : 'İptal', style: 'destructive', onPress: () => {
-                                    if (task.note) {
-                                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, note: undefined } : t));
-                                    }
-                                  }
-                                },
-                                {
-                                  text: 'Kaydet', onPress: (text?: string) => {
-                                    if (text && text.trim()) {
-                                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, note: text.trim() } : t));
-                                    }
-                                  }
-                                },
-                              ],
-                              'plain-text',
-                              task.note || ''
-                            );
-                          }}
+                          onPress={() => setEditingNoteTaskId(task.id)}
                         >
                           <Text style={styles.taskTitle}>{task.title}</Text>
                           {task.note && <Text style={styles.taskNoteHint}>📝 {task.note}</Text>}
@@ -409,6 +388,24 @@ export default function CreatePlanScreen() {
               })}
             </View>
           )}
+
+          {/* Not Düzenleme Modalı */}
+          <NoteEditModal
+            visible={editingNoteTaskId !== null}
+            taskTitle={tasks.find(t => t.id === editingNoteTaskId)?.title || ''}
+            currentNote={tasks.find(t => t.id === editingNoteTaskId)?.note || ''}
+            onSave={(note) => {
+              if (editingNoteTaskId) {
+                setTasks(prev => prev.map(t => t.id === editingNoteTaskId ? { ...t, note } : t));
+              }
+            }}
+            onDelete={() => {
+              if (editingNoteTaskId) {
+                setTasks(prev => prev.map(t => t.id === editingNoteTaskId ? { ...t, note: undefined } : t));
+              }
+            }}
+            onClose={() => setEditingNoteTaskId(null)}
+          />
 
           {/* Kaydet Butonu */}
           <TouchableOpacity

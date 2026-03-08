@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Task } from '../types';
 import { useApp } from '../context/AppContext';
+import NoteEditModal from './NoteEditModal';
 
 interface AnimatedTaskItemProps {
   task: Task;
@@ -38,6 +39,7 @@ export default function AnimatedTaskItem({
   onNoteEdit,
 }: AnimatedTaskItemProps) {
   const { settings } = useApp();
+  const [showNoteModal, setShowNoteModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const swipeableRef = useRef<Swipeable>(null);
@@ -215,63 +217,24 @@ export default function AnimatedTaskItem({
             </Text>
           </View>
 
-          {/* Not İkonu */}
-          {task.note && !isEditMode && (
+          {/* Not İkonu — her zaman görünür (not varsa dolu, yoksa soluk) */}
+          {(task.note || isEditMode) && (
             <TouchableOpacity
               style={styles.noteIconContainer}
-              onPress={() => Alert.alert('📝 Not', task.note!)}
-            >
-              <Text style={styles.noteIcon}>📝</Text>
-            </TouchableOpacity>
-          )}
-          {isEditMode && onNoteEdit && (
-            <TouchableOpacity
-              style={styles.noteIconContainer}
-              onPress={() => {
-                Alert.prompt(
-                  task.note ? 'Notu Düzenle' : 'Not Ekle',
-                  task.title,
-                  [
-                    {
-                      text: task.note ? 'Sil' : 'İptal', style: 'destructive', onPress: () => {
-                        if (task.note) onNoteEdit(task.id, undefined);
-                      }
-                    },
-                    {
-                      text: 'Kaydet', onPress: (text?: string) => {
-                        if (text && text.trim()) onNoteEdit(task.id, text.trim());
-                      }
-                    },
-                  ],
-                  'plain-text',
-                  task.note || ''
-                );
-              }}
+              onPress={() => setShowNoteModal(true)}
             >
               <Text style={[styles.noteIcon, !task.note && { opacity: 0.3 }]}>📝</Text>
             </TouchableOpacity>
           )}
 
-          {/* Reorder + Silme Butonları (Edit Mode) */}
+          {/* Silme Butonu (Edit Mode) */}
           {isEditMode && (
-            <View style={styles.editActions}>
-              {onMoveUp && index > 0 && (
-                <TouchableOpacity onPress={onMoveUp} style={styles.reorderButton}>
-                  <Text style={styles.reorderButtonText}>↑</Text>
-                </TouchableOpacity>
-              )}
-              {onMoveDown && index < totalCount - 1 && (
-                <TouchableOpacity onPress={onMoveDown} style={styles.reorderButton}>
-                  <Text style={styles.reorderButtonText}>↓</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                onPress={triggerRemoveAnimation}
-                style={styles.removeButton}
-              >
-                <Text style={styles.removeButtonText}>🗑</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={triggerRemoveAnimation}
+              style={styles.removeButton}
+            >
+              <Text style={styles.removeButtonText}>🗑</Text>
+            </TouchableOpacity>
           )}
         </View>
       </TouchableOpacity>
@@ -279,34 +242,47 @@ export default function AnimatedTaskItem({
   );
 
   return (
-    <Animated.View
-      style={[
-        styles.taskItemWrapper,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
-      {isEditMode ? (
-        // Edit modda swipe devre dışı
-        taskContent
-      ) : (
-        <Swipeable
-          ref={swipeableRef}
-          renderRightActions={renderRightActions}
-          renderLeftActions={renderLeftActions}
-          onSwipeableOpen={handleSwipeOpen}
-          overshootRight={false}
-          overshootLeft={false}
-          friction={2}
-          rightThreshold={80}
-          leftThreshold={80}
-        >
-          {taskContent}
-        </Swipeable>
-      )}
-    </Animated.View>
+    <>
+      <Animated.View
+        style={[
+          styles.taskItemWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        {isEditMode ? (
+          taskContent
+        ) : (
+          <Swipeable
+            ref={swipeableRef}
+            renderLeftActions={renderLeftActions}
+            renderRightActions={renderRightActions}
+            onSwipeableOpen={handleSwipeOpen}
+            overshootLeft={false}
+            overshootRight={false}
+            containerStyle={{ overflow: 'visible' }}
+          >
+            {taskContent}
+          </Swipeable>
+        )}
+      </Animated.View>
+
+      {/* Not Düzenleme Modalı */}
+      <NoteEditModal
+        visible={showNoteModal}
+        taskTitle={task.title}
+        currentNote={task.note || ''}
+        onSave={(note) => {
+          if (onNoteEdit) onNoteEdit(task.id, note);
+        }}
+        onDelete={() => {
+          if (onNoteEdit) onNoteEdit(task.id, undefined);
+        }}
+        onClose={() => setShowNoteModal(false)}
+      />
+    </>
   );
 }
 
