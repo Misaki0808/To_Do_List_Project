@@ -26,6 +26,7 @@ export default function CreatePlanScreen() {
   // State'ler
   const [selectedDate, setSelectedDate] = useState('');
   const [taskInput, setTaskInput] = useState('');
+  const [noteInput, setNoteInput] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<'low' | 'medium' | 'high'>('low');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [paragraphInput, setParagraphInput] = useState(''); // AI için paragraf
@@ -67,15 +68,17 @@ export default function CreatePlanScreen() {
     }
 
     const newTask: Task = {
-      id: Date.now().toString(), // Basit ID üretimi
+      id: Date.now().toString(),
       title: taskInput.trim(),
       done: false,
       priority: selectedPriority,
+      ...(noteInput.trim() ? { note: noteInput.trim() } : {}),
     };
 
     setTasks([...tasks, newTask]);
-    setTaskInput(''); // Input'u temizle
-    setSelectedPriority('low'); // Priority'yi low olarak resetle
+    setTaskInput('');
+    setNoteInput('');
+    setSelectedPriority('low');
   };
 
   // Görev sil
@@ -329,10 +332,7 @@ export default function CreatePlanScreen() {
                 />
                 <VoiceInputButton
                   mode="task"
-                  onTranscript={(text, isFinal) => {
-                    if (isFinal) setTaskInput(text);
-                    else setTaskInput(text);
-                  }}
+                  onTranscript={(text) => setTaskInput(text)}
                 />
               </View>
               <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
@@ -346,6 +346,17 @@ export default function CreatePlanScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
+
+            {/* Opsiyonel Not */}
+            <TextInput
+              style={styles.noteInput}
+              placeholder="📝 Not ekle (opsiyonel)..."
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              value={noteInput}
+              onChangeText={setNoteInput}
+              multiline
+              numberOfLines={2}
+            />
           </View>
 
           {/* Görev Listesi */}
@@ -689,5 +700,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+  },
+  noteInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#fff',
+    marginTop: 8,
+    minHeight: 40,
+    textAlignVertical: 'top',
   },
 });

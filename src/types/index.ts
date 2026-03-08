@@ -3,7 +3,8 @@ export interface Task {
   id: string;
   title: string;
   done: boolean;
-  priority?: 'low' | 'medium' | 'high'; // Yeşil, Sarı, Kırmızı
+  priority?: 'low' | 'medium' | 'high';
+  note?: string;
 }
 
 // Tekrarlayan görev tipi

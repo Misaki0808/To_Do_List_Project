@@ -196,13 +196,18 @@ export default function AnimatedTaskItem({
           >
             <Text style={styles.taskNumber}>{index + 1}</Text>
           </TouchableOpacity>
-          <Text style={[
-            styles.taskTitle,
-            { color: textColor },
-            task.done && { textDecorationLine: 'line-through', color: doneTextColor }
-          ]}>
-            {task.title}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[
+              styles.taskTitle,
+              { color: textColor },
+              task.done && { textDecorationLine: 'line-through', color: doneTextColor }
+            ]}>
+              {task.title}
+            </Text>
+            {task.note ? (
+              <Text style={styles.taskNote}>{task.note}</Text>
+            ) : null}
+          </View>
         </View>
 
         {/* Silme Butonu (Edit Mode) */}
@@ -360,7 +365,14 @@ const styles = StyleSheet.create({
   },
   swipeActionText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
+    marginTop: 4,
+  },
+  taskNote: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });
