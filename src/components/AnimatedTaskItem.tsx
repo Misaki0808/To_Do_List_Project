@@ -18,16 +18,12 @@ interface AnimatedTaskItemProps {
   index: number;
   totalCount?: number;
   isEditMode: boolean;
-  isReordering?: boolean;  // any task currently being reordered?
-  isSelected?: boolean;    // this task is the one being dragged
+  isSelected?: boolean;
   onToggleDone: () => void;
   onChangePriority: () => void;
   onRemove: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
   onNoteEdit?: (taskId: string, note: string | undefined) => void;
-  onLongPressSelect?: () => void;  // user long-pressed this task to reorder
-  onTapToPlace?: () => void;       // user tapped here to drop the selected task
+  onLongPressSelect?: () => void;
 }
 
 export default function AnimatedTaskItem({
@@ -35,16 +31,12 @@ export default function AnimatedTaskItem({
   index,
   totalCount = 0,
   isEditMode,
-  isReordering = false,
   isSelected = false,
   onToggleDone,
   onChangePriority,
   onRemove,
-  onMoveUp,
-  onMoveDown,
   onNoteEdit,
   onLongPressSelect,
-  onTapToPlace,
 }: AnimatedTaskItemProps) {
   const { settings } = useApp();
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -198,40 +190,24 @@ export default function AnimatedTaskItem({
         borderLeftWidth: 4,
         borderLeftColor: priorityColor,
         backgroundColor: cardBackgroundColor,
-        // Selected: golden border glow
         ...(isSelected ? {
           borderColor: '#f9ca24',
           borderWidth: 2,
           shadowColor: '#f9ca24',
           shadowOpacity: 0.6,
           shadowRadius: 12,
-        } : {}),
-        // Drop target: subtle highlight
-        ...(isReordering && !isSelected ? {
-          borderWidth: 1,
-          borderColor: 'rgba(102,126,234,0.4)',
-          borderStyle: 'dashed',
+          elevation: 10,
         } : {}),
       }
     ]}>
       <TouchableOpacity
         style={styles.taskItem}
-        onPress={() => {
-          if (isEditMode && isReordering && !isSelected && onTapToPlace) {
-            // Drop the selected task here
-            onTapToPlace();
-          } else if (!isEditMode) {
-            onToggleDone();
-          }
-        }}
+        onPress={() => !isEditMode && onToggleDone()}
         onLongPress={() => {
-          if (isEditMode && onLongPressSelect) {
-            onLongPressSelect();
-          }
+          if (isEditMode && onLongPressSelect) onLongPressSelect();
         }}
-        delayLongPress={350}
+        delayLongPress={300}
         activeOpacity={0.7}
-        disabled={isEditMode && !isReordering && !onLongPressSelect}
       >
         {/* Görev Numarası ve Başlığı */}
         <View style={styles.taskContent}>

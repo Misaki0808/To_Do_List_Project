@@ -21,6 +21,7 @@ import ShareModal from '../components/ShareModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import AnimatedTaskItem from '../components/AnimatedTaskItem';
 import VoiceInputButton from '../components/VoiceInputButton';
+import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 
 // Sadece native platformlarda import et
 let RNShare: any = null;
@@ -42,7 +43,6 @@ export default function MultiDayViewScreen() {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [deletedTask, setDeletedTask] = useState<Task | null>(null);
   const [quickAddText, setQuickAddText] = useState('');
-  const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null);
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const undoAnim = useRef(new RNAnimated.Value(0)).current;
 
@@ -212,7 +212,6 @@ export default function MultiDayViewScreen() {
     await deletePlan(selectedDate);
     setCurrentTasks([]);
     setIsEditMode(false);
-    setReorderingTaskId(null);
   };
 
   // Planı kopyala
@@ -521,55 +520,67 @@ export default function MultiDayViewScreen() {
         )}
 
         {/* Görev Listesi */}
-        <ScrollView style={styles.taskList}>
-          {/* Sıralama Modu Hint */}
-          {reorderingTaskId && (
-            <View style={styles.reorderHint}>
-              <Text style={styles.reorderHintText}>
-                ✋ Taşımak için hedef göreve dokun
-              </Text>
-              <TouchableOpacity onPress={() => setReorderingTaskId(null)}>
-                <Text style={styles.reorderHintCancel}>İptal</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {currentTasks.length === 0 ? (
-            // Boş State
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateCard}>
-                <Text style={styles.emptyStateIcon}>📭</Text>
-                <Text style={styles.emptyStateTitle}>Bu gün için plan yok</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  "Plan Oluştur" sekmesinden yeni plan ekleyebilirsiniz
-                </Text>
+        {isEditMode && currentTasks.length > 0 ? (
+          /* Edit modda: Sürükle-bırak FlatList */
+          <DraggableFlatList
+            data={currentTasks}
+            keyExtractor={(item) => item.id}
+            onDragEnd={async ({ data }) => {
+              setCurrentTasks(data);
+              await savePlan(selectedDate, data);
+              await refreshPlans();
+            }}
+            renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<Task>) => {
+              const idx = getIndex() ?? 0;
+              return (
+                <ScaleDecorator activeScale={1.04}>
+                  <AnimatedTaskItem
+                    task={item}
+                    index={idx}
+                    totalCount={currentTasks.length}
+                    isEditMode={true}
+                    isSelected={isActive}
+                    onToggleDone={() => toggleTaskDone(item.id, item.done)}
+                    onChangePriority={() => handleChangePriority(item.id)}
+                    onRemove={() => handleRemoveTask(item.id)}
+                    onNoteEdit={handleNoteEdit}
+                    onLongPressSelect={drag}
+                  />
+                </ScaleDecorator>
+              );
+            }}
+            containerStyle={{ flex: 1, paddingHorizontal: 0 }}
+            activationDistance={5}
+          />
+        ) : (
+          <ScrollView style={styles.taskList}>
+            {currentTasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateCard}>
+                  <Text style={styles.emptyStateIcon}>📭</Text>
+                  <Text style={styles.emptyStateTitle}>Bu gün için plan yok</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    "Plan Oluştur" sekmesinden yeni plan ekleyebilirsiniz
+                  </Text>
+                </View>
               </View>
-            </View>
-          ) : (
-            currentTasks.map((task, index) => (
-              <AnimatedTaskItem
-                key={task.id}
-                task={task}
-                index={index}
-                totalCount={currentTasks.length}
-                isEditMode={isEditMode}
-                isReordering={reorderingTaskId !== null}
-                isSelected={reorderingTaskId === task.id}
-                onToggleDone={() => toggleTaskDone(task.id, task.done)}
-                onChangePriority={() => handleChangePriority(task.id)}
-                onRemove={() => handleRemoveTask(task.id)}
-                onNoteEdit={handleNoteEdit}
-                onLongPressSelect={() => setReorderingTaskId(task.id)}
-                onTapToPlace={() => {
-                  if (reorderingTaskId && reorderingTaskId !== task.id) {
-                    const fromIndex = currentTasks.findIndex(t => t.id === reorderingTaskId);
-                    handleReorderTask(fromIndex, index);
-                  }
-                  setReorderingTaskId(null);
-                }}
-              />
-            ))
-          )}
-        </ScrollView>
+            ) : (
+              currentTasks.map((task, index) => (
+                <AnimatedTaskItem
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  totalCount={currentTasks.length}
+                  isEditMode={false}
+                  onToggleDone={() => toggleTaskDone(task.id, task.done)}
+                  onChangePriority={() => handleChangePriority(task.id)}
+                  onRemove={() => handleRemoveTask(task.id)}
+                  onNoteEdit={handleNoteEdit}
+                />
+              ))
+            )}
+          </ScrollView>
+        )}
 
         {/* Geri Al Snackbar */}
         {deletedTask && (
