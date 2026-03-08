@@ -42,6 +42,7 @@ export default function MultiDayViewScreen() {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [deletedTask, setDeletedTask] = useState<Task | null>(null);
   const [quickAddText, setQuickAddText] = useState('');
+  const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null);
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const undoAnim = useRef(new RNAnimated.Value(0)).current;
 
@@ -211,6 +212,7 @@ export default function MultiDayViewScreen() {
     await deletePlan(selectedDate);
     setCurrentTasks([]);
     setIsEditMode(false);
+    setReorderingTaskId(null);
   };
 
   // Planı kopyala
@@ -520,6 +522,17 @@ export default function MultiDayViewScreen() {
 
         {/* Görev Listesi */}
         <ScrollView style={styles.taskList}>
+          {/* Sıralama Modu Hint */}
+          {reorderingTaskId && (
+            <View style={styles.reorderHint}>
+              <Text style={styles.reorderHintText}>
+                ✋ Taşımak için hedef göreve dokun
+              </Text>
+              <TouchableOpacity onPress={() => setReorderingTaskId(null)}>
+                <Text style={styles.reorderHintCancel}>İptal</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {currentTasks.length === 0 ? (
             // Boş State
             <View style={styles.emptyState}>
@@ -539,12 +552,20 @@ export default function MultiDayViewScreen() {
                 index={index}
                 totalCount={currentTasks.length}
                 isEditMode={isEditMode}
+                isReordering={reorderingTaskId !== null}
+                isSelected={reorderingTaskId === task.id}
                 onToggleDone={() => toggleTaskDone(task.id, task.done)}
                 onChangePriority={() => handleChangePriority(task.id)}
                 onRemove={() => handleRemoveTask(task.id)}
-                onMoveUp={() => handleReorderTask(index, index - 1)}
-                onMoveDown={() => handleReorderTask(index, index + 1)}
                 onNoteEdit={handleNoteEdit}
+                onLongPressSelect={() => setReorderingTaskId(task.id)}
+                onTapToPlace={() => {
+                  if (reorderingTaskId && reorderingTaskId !== task.id) {
+                    const fromIndex = currentTasks.findIndex(t => t.id === reorderingTaskId);
+                    handleReorderTask(fromIndex, index);
+                  }
+                  setReorderingTaskId(null);
+                }}
               />
             ))
           )}
@@ -911,6 +932,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  reorderHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(102, 126, 234, 0.25)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.5)',
+  },
+  reorderHintText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  reorderHintCancel: {
+    color: '#ff6b6b',
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 12,
   },
 });
 

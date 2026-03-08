@@ -18,12 +18,16 @@ interface AnimatedTaskItemProps {
   index: number;
   totalCount?: number;
   isEditMode: boolean;
+  isReordering?: boolean;  // any task currently being reordered?
+  isSelected?: boolean;    // this task is the one being dragged
   onToggleDone: () => void;
   onChangePriority: () => void;
   onRemove: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onNoteEdit?: (taskId: string, note: string | undefined) => void;
+  onLongPressSelect?: () => void;  // user long-pressed this task to reorder
+  onTapToPlace?: () => void;       // user tapped here to drop the selected task
 }
 
 export default function AnimatedTaskItem({
@@ -31,12 +35,16 @@ export default function AnimatedTaskItem({
   index,
   totalCount = 0,
   isEditMode,
+  isReordering = false,
+  isSelected = false,
   onToggleDone,
   onChangePriority,
   onRemove,
   onMoveUp,
   onMoveDown,
   onNoteEdit,
+  onLongPressSelect,
+  onTapToPlace,
 }: AnimatedTaskItemProps) {
   const { settings } = useApp();
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -189,17 +197,48 @@ export default function AnimatedTaskItem({
       {
         borderLeftWidth: 4,
         borderLeftColor: priorityColor,
-        backgroundColor: cardBackgroundColor
+        backgroundColor: cardBackgroundColor,
+        // Selected: golden border glow
+        ...(isSelected ? {
+          borderColor: '#f9ca24',
+          borderWidth: 2,
+          shadowColor: '#f9ca24',
+          shadowOpacity: 0.6,
+          shadowRadius: 12,
+        } : {}),
+        // Drop target: subtle highlight
+        ...(isReordering && !isSelected ? {
+          borderWidth: 1,
+          borderColor: 'rgba(102,126,234,0.4)',
+          borderStyle: 'dashed',
+        } : {}),
       }
     ]}>
       <TouchableOpacity
         style={styles.taskItem}
-        onPress={() => !isEditMode && onToggleDone()}
+        onPress={() => {
+          if (isEditMode && isReordering && !isSelected && onTapToPlace) {
+            // Drop the selected task here
+            onTapToPlace();
+          } else if (!isEditMode) {
+            onToggleDone();
+          }
+        }}
+        onLongPress={() => {
+          if (isEditMode && onLongPressSelect) {
+            onLongPressSelect();
+          }
+        }}
+        delayLongPress={350}
         activeOpacity={0.7}
-        disabled={isEditMode}
+        disabled={isEditMode && !isReordering && !onLongPressSelect}
       >
         {/* Görev Numarası ve Başlığı */}
         <View style={styles.taskContent}>
+          {/* Sürükleme tutacağı */}
+          {isEditMode && (
+            <Text style={[styles.grabHandle, isSelected && { color: '#f9ca24' }]}>≡</Text>
+          )}
           <TouchableOpacity
             style={[styles.taskNumberBadge, { backgroundColor: priorityColor }]}
             onPress={onChangePriority}
@@ -399,6 +438,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginTop: 4,
+  },
+  grabHandle: {
+    fontSize: 20,
+    color: 'rgba(255,255,255,0.35)',
+    marginRight: 6,
+    letterSpacing: 2,
   },
   noteIconContainer: {
     width: 32,
