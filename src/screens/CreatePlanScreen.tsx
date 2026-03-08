@@ -26,7 +26,6 @@ export default function CreatePlanScreen() {
   // State'ler
   const [selectedDate, setSelectedDate] = useState('');
   const [taskInput, setTaskInput] = useState('');
-  const [noteInput, setNoteInput] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<'low' | 'medium' | 'high'>('low');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [paragraphInput, setParagraphInput] = useState(''); // AI için paragraf
@@ -72,12 +71,10 @@ export default function CreatePlanScreen() {
       title: taskInput.trim(),
       done: false,
       priority: selectedPriority,
-      ...(noteInput.trim() ? { note: noteInput.trim() } : {}),
     };
 
     setTasks([...tasks, newTask]);
     setTaskInput('');
-    setNoteInput('');
     setSelectedPriority('low');
   };
 
@@ -346,17 +343,6 @@ export default function CreatePlanScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-
-            {/* Opsiyonel Not */}
-            <TextInput
-              style={styles.noteInput}
-              placeholder="📝 Not ekle (opsiyonel)..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              value={noteInput}
-              onChangeText={setNoteInput}
-              multiline
-              numberOfLines={2}
-            />
           </View>
 
           {/* Görev Listesi */}
@@ -379,7 +365,36 @@ export default function CreatePlanScreen() {
                         >
                           <Text style={styles.taskNumber}>{index + 1}</Text>
                         </TouchableOpacity>
-                        <Text style={styles.taskTitle}>{task.title}</Text>
+                        <TouchableOpacity
+                          style={{ flex: 1 }}
+                          onPress={() => {
+                            Alert.prompt(
+                              task.note ? 'Notu Düzenle' : 'Not Ekle',
+                              task.title,
+                              [
+                                {
+                                  text: task.note ? 'Sil' : 'İptal', style: 'destructive', onPress: () => {
+                                    if (task.note) {
+                                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, note: undefined } : t));
+                                    }
+                                  }
+                                },
+                                {
+                                  text: 'Kaydet', onPress: (text?: string) => {
+                                    if (text && text.trim()) {
+                                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, note: text.trim() } : t));
+                                    }
+                                  }
+                                },
+                              ],
+                              'plain-text',
+                              task.note || ''
+                            );
+                          }}
+                        >
+                          <Text style={styles.taskTitle}>{task.title}</Text>
+                          {task.note && <Text style={styles.taskNoteHint}>📝 {task.note}</Text>}
+                        </TouchableOpacity>
 
                         <TouchableOpacity
                           onPress={() => handleRemoveTask(task.id)}
@@ -701,15 +716,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  noteInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#fff',
-    marginTop: 8,
-    minHeight: 40,
-    textAlignVertical: 'top',
+  taskNoteHint: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

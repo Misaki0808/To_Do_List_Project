@@ -159,6 +159,25 @@ export default function MultiDayViewScreen() {
     await refreshPlans();
   };
 
+  // Görev sırasını değiştir (reorder)
+  const handleReorderTask = async (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= currentTasks.length) return;
+    const updated = [...currentTasks];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    await savePlan(selectedDate, updated);
+    await refreshPlans();
+  };
+
+  // Not düzenle/sil
+  const handleNoteEdit = async (taskId: string, note: string | undefined) => {
+    const updatedTasks = currentTasks.map(task =>
+      task.id === taskId ? { ...task, note } : task
+    );
+    await savePlan(selectedDate, updatedTasks);
+    await refreshPlans();
+  };
+
   // Tüm günü sil
   const handleDeleteDay = async () => {
     // Ayarlarda "daima sor" aktifse onay iste
@@ -518,10 +537,14 @@ export default function MultiDayViewScreen() {
                 key={task.id}
                 task={task}
                 index={index}
+                totalCount={currentTasks.length}
                 isEditMode={isEditMode}
                 onToggleDone={() => toggleTaskDone(task.id, task.done)}
                 onChangePriority={() => handleChangePriority(task.id)}
                 onRemove={() => handleRemoveTask(task.id)}
+                onMoveUp={() => handleReorderTask(index, index - 1)}
+                onMoveDown={() => handleReorderTask(index, index + 1)}
+                onNoteEdit={handleNoteEdit}
               />
             ))
           )}

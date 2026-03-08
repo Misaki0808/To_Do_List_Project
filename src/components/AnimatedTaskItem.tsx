@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Alert,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,19 +15,27 @@ import { useApp } from '../context/AppContext';
 interface AnimatedTaskItemProps {
   task: Task;
   index: number;
+  totalCount?: number;
   isEditMode: boolean;
   onToggleDone: () => void;
   onChangePriority: () => void;
   onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onNoteEdit?: (taskId: string, note: string | undefined) => void;
 }
 
 export default function AnimatedTaskItem({
   task,
   index,
+  totalCount = 0,
   isEditMode,
   onToggleDone,
   onChangePriority,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  onNoteEdit,
 }: AnimatedTaskItemProps) {
   const { settings } = useApp();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -204,21 +213,67 @@ export default function AnimatedTaskItem({
             ]}>
               {task.title}
             </Text>
-            {task.note ? (
-              <Text style={styles.taskNote}>{task.note}</Text>
-            ) : null}
           </View>
-        </View>
 
-        {/* Silme Butonu (Edit Mode) */}
-        {isEditMode && (
-          <TouchableOpacity
-            onPress={triggerRemoveAnimation}
-            style={styles.removeButton}
-          >
-            <Text style={styles.removeButtonText}>🗑</Text>
-          </TouchableOpacity>
-        )}
+          {/* Not İkonu */}
+          {task.note && !isEditMode && (
+            <TouchableOpacity
+              style={styles.noteIconContainer}
+              onPress={() => Alert.alert('📝 Not', task.note!)}
+            >
+              <Text style={styles.noteIcon}>📝</Text>
+            </TouchableOpacity>
+          )}
+          {isEditMode && onNoteEdit && (
+            <TouchableOpacity
+              style={styles.noteIconContainer}
+              onPress={() => {
+                Alert.prompt(
+                  task.note ? 'Notu Düzenle' : 'Not Ekle',
+                  task.title,
+                  [
+                    {
+                      text: task.note ? 'Sil' : 'İptal', style: 'destructive', onPress: () => {
+                        if (task.note) onNoteEdit(task.id, undefined);
+                      }
+                    },
+                    {
+                      text: 'Kaydet', onPress: (text?: string) => {
+                        if (text && text.trim()) onNoteEdit(task.id, text.trim());
+                      }
+                    },
+                  ],
+                  'plain-text',
+                  task.note || ''
+                );
+              }}
+            >
+              <Text style={[styles.noteIcon, !task.note && { opacity: 0.3 }]}>📝</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Reorder + Silme Butonları (Edit Mode) */}
+          {isEditMode && (
+            <View style={styles.editActions}>
+              {onMoveUp && index > 0 && (
+                <TouchableOpacity onPress={onMoveUp} style={styles.reorderButton}>
+                  <Text style={styles.reorderButtonText}>↑</Text>
+                </TouchableOpacity>
+              )}
+              {onMoveDown && index < totalCount - 1 && (
+                <TouchableOpacity onPress={onMoveDown} style={styles.reorderButton}>
+                  <Text style={styles.reorderButtonText}>↓</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={triggerRemoveAnimation}
+                style={styles.removeButton}
+              >
+                <Text style={styles.removeButtonText}>🗑</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -369,10 +424,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
   },
-  taskNote: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 2,
-    fontStyle: 'italic',
+  noteIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  noteIcon: {
+    fontSize: 16,
+  },
+  editActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 4,
+  },
+  reorderButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reorderButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
